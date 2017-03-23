@@ -1,0 +1,26 @@
+from utils.utils import crop_m
+
+
+class Range:
+    def __init__(self, min_val: float, max_val: float):
+        self._val_min = min_val
+        self._val_max = max_val
+        self._val_diff = max_val - min_val
+
+    @property
+    def val_min(self):
+        return self._val_min
+
+    @property
+    def val_max(self):
+        return self._val_max
+
+    @property
+    def val_diff(self):
+        return self._val_diff
+
+    def crop(self, val):
+        return crop_m(val, self._val_min, self._val_max)
+
+    def to_percent(self, val):
+        return (val - self._val_min) / self._val_diff * 100
