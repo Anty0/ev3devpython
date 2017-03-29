@@ -1,6 +1,8 @@
 import cgi
 import json
+import mimetypes
 import os
+import shutil
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
@@ -18,8 +20,8 @@ class ApiHTTPRequestHandler(BaseHTTPRequestHandler):
     #     log.debug(format % args)
     #     pass
 
-    def get_api_dict(self):
-        return {'index.esp': 'get_api_dict'}
+    def get_api_dict(self) -> dict:
+        return {'index.esp': 'command://get_api_dict'}
 
     def resolve_path(self, path) -> str or dict or None:
         path = path.split(os.sep)
@@ -37,7 +39,9 @@ class ApiHTTPRequestHandler(BaseHTTPRequestHandler):
                             filename = other_filename
                             break
 
-                if not len(filename):
+                    if not len(filename):
+                        return None
+                else:
                     return None
             file_contents = file_contents[filename]
         return file_contents
@@ -46,10 +50,10 @@ class ApiHTTPRequestHandler(BaseHTTPRequestHandler):
         return isinstance(file, dict)
 
     def is_api_call(self, file):
-        return isinstance(file, str)
+        return isinstance(file, str) and file.startswith('command://')
 
     def is_file(self, file):
-        return False  # isinstance(file, FileProvider)  # TODO: create file provider class
+        return isinstance(file, str) and file.startswith('file://')
 
     def is_path_dir(self, path):
         return self.is_dir(self.resolve_path(path))
@@ -59,6 +63,12 @@ class ApiHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def is_path_file(self, path):
         return self.is_file(self.resolve_path(path))
+
+    def get_command_name_from_path(self, path):
+        return path[10::]
+
+    def get_file_path_from_path(self, path):
+        return path[7::]
 
     def resolve_post_args(self):
         content_type_header = self.headers.get('content-type')
@@ -87,25 +97,29 @@ class ApiHTTPRequestHandler(BaseHTTPRequestHandler):
     def try_handle_request(self, path, post_args, get_args):
         path_result = self.resolve_path(path)
         if path_result is not None:
+            # noinspection PyTypeChecker
             if self.is_dir(path_result):
                 return False
             elif self.is_api_call(path_result):
-                # noinspection PyTypeChecker
-                method_name = 'command_' + path_result
+                method_name = 'command_' + self.get_command_name_from_path(path_result)
                 if not hasattr(self, method_name):
                     return False
                 method = getattr(self, method_name)
                 return method(path, post_args, get_args)
-            elif self.is_file(path_result):  # TODO: implement
-                return False
-                # self.send_response(200)
-                # self.send_header('Content-type', mime_type)
-                # self.end_headers()
-                #
-                # if self.command != 'HEAD':
-                #     with open(filename, mode='rb') as fh:
-                #         shutil.copyfileobj(fh, self.wfile)
-                # return True
+            elif self.is_file(path_result):
+                file_path = self.get_file_path_from_path(path_result)
+                mime_type, encoding = mimetypes.guess_type(file_path)
+                if mime_type is None:
+                    mime_type = 'text/plain'
+
+                self.send_response(200)
+                self.send_header('Content-type', mime_type)
+                self.end_headers()
+
+                if self.command != 'HEAD':
+                    with open(file_path, mode='rb') as fh:
+                        shutil.copyfileobj(fh, self.wfile)
+                return True
             else:
                 return False
         else:

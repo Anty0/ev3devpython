@@ -53,12 +53,15 @@ class Scanner:
     def angle_deg(self):
         return self._scanner_propulsion.angle_deg
 
-    def value_scan(self, angle=0, percent=True):
-        if self.angle_deg != angle:
-            self.rotate_to_pos(angle)
-            self.wait_to_stop()
-        return self.value(percent, True)
+    def value_scan(self, angle=0, percent=True, n=0):
+        if self.motor_connected:
+            if self.angle_deg != angle:
+                self.rotate_to_pos(angle)
+                self.wait_to_stop()
+        elif angle != 0:
+            raise Exception('Scanner motor is not connected')
+        return self.value(percent, n)
 
-    def value_scan_continuous(self, to_angle, value_handler, percent=True):
+    def value_scan_continuous(self, to_angle, value_handler, percent=True, n=0):
         self.rotate_to_pos(to_angle)
-        self.repeat_while_running(lambda: value_handler(self.value(percent), self.angle_deg))
+        self.repeat_while_running(lambda: value_handler(self.value(percent, n), self.angle_deg))

@@ -1,4 +1,5 @@
 import time
+from threading import Event
 
 from .log import get_logger
 
@@ -29,3 +30,14 @@ def crop_m(input_val, min_out=-100, max_out=100):
 
 def crop_r(input_val, max_r=100):
     return min(max_r, max(-max_r, input_val))
+
+
+def repeat_while(condition: callable, callback: callable, stop_event: Event = None):
+    if stop_event is not None:
+        stop_event.clear()
+    try:
+        while condition():
+            callback()
+    finally:
+        if stop_event is not None:
+            stop_event.set()

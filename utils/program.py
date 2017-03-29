@@ -1,4 +1,5 @@
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
+from http.server import HTTPServer
 from threading import Thread, Event
 
 from utils.web.api_http_handler import ApiHTTPRequestHandler
@@ -7,16 +8,156 @@ from .log import get_logger
 log = get_logger(__name__)
 
 
+class ProgramApiHandler(ApiHTTPRequestHandler):
+    def get_api_dict(self) -> dict:
+        return {
+            'api': {
+                'index.esp': 'command://get_api_dict',
+
+                'getConfigMap.esp': 'command://get_config_map',
+                'getConfig.esp': 'command://get_config',
+                'updateConfig.esp': 'command://update_config',
+
+                'getActions.esp': 'command://get_actions',
+                'action.esp': 'command://exec_action',
+
+                'isPaused.esp': 'command://is_paused',
+                'pause.esp': 'command://pause',
+                'resume.esp': 'command://resume'
+            }
+        }
+
+    def get_api_actions(self) -> dict:
+        return {}
+
+    def get_config_map(self) -> dict:
+        return {}
+
+    def get_config(self) -> dict:
+        return {}
+
+    def update_config(self, config: dict):
+        pass
+
+    def is_paused(self) -> bool:
+        return True
+
+    def pause(self):
+        pass
+
+    def resume(self):
+        pass
+
+    def command_get_config(self, path, post_args, get_args):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            self.wfile.write(json.dumps(self.get_config()).encode())
+
+        return True
+
+    def command_update_config(self, path, post_args, get_args):
+        if 'config' not in post_args:
+            return False
+        config = json.loads(post_args['config'])
+
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            try:
+                self.update_config(config)
+                self.wfile.write(json.dumps({'success': True}).encode())
+            except Exception as e:
+                log.exception(e)
+                self.wfile.write(json.dumps({'success': False}).encode())
+
+        return True
+
+    def command_get_actions(self, path, post_args, get_args):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            self.wfile.write(json.dumps(list(self.get_api_actions().keys())).encode())
+
+        return True
+
+    def command_exec_action(self, path, post_args, get_args):
+        if 'name' not in post_args:
+            return False
+        name = post_args['name']
+        actions = self.get_api_actions()
+        if name not in actions:
+            return False
+
+        method_name = 'action_' + actions[name]
+        if not hasattr(self, method_name):
+            return False
+        method = getattr(self, method_name)
+        return method(path, post_args, get_args)
+
+    def command_is_paused(self, path, post_args, get_args):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            try:
+                paused = self.is_paused()
+                self.wfile.write(json.dumps({'success': True, 'paused': paused}).encode())
+            except Exception as e:
+                log.exception(e)
+                self.wfile.write(json.dumps({'success': False}).encode())
+
+        return True
+
+    def command_pause(self, path, post_args, get_args):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            try:
+                self.pause()
+                self.wfile.write(json.dumps({'success': True}).encode())
+            except Exception as e:
+                log.exception(e)
+                self.wfile.write(json.dumps({'success': False}).encode())
+
+        return True
+
+    def command_resume(self, path, post_args, get_args):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            try:
+                self.resume()
+                self.wfile.write(json.dumps({'success': True}).encode())
+            except Exception as e:
+                log.exception(e)
+                self.wfile.write(json.dumps({'success': False}).encode())
+
+        return True
+
+
 class Program:
     SERVER_PORT = 8000
 
-    def __init__(self, request_handler_class: BaseHTTPRequestHandler = ApiHTTPRequestHandler):
+    def __init__(self, request_handler_class=ApiHTTPRequestHandler):
         self._server = HTTPServer(('', self.SERVER_PORT), request_handler_class)
+        self._server.timeout = 5
         self._running = False
         self._stop_event = Event()
         self._stop_event.set()
 
-    def _on_start(self):
+    def _on_start(self, config: dict = None):
         pass
 
     def _on_exit(self):
@@ -31,7 +172,7 @@ class Program:
     def wait_to_exit(self):
         self._stop_event.wait()
 
-    def start(self):
+    def start(self, config: dict = None):
         if not self.can_start():
             return False
 
@@ -40,11 +181,10 @@ class Program:
 
         def run_server():
             try:
-                self._on_start()
+                self._on_start(config)
                 self._server.serve_forever()
             except (KeyboardInterrupt, Exception) as e:
                 log.exception(e)
-                self._server.shutdown()
             finally:
                 self._on_exit()
                 self._running = False

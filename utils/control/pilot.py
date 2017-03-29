@@ -270,7 +270,7 @@ class Pilot:
         mul_speed = crop_r(mul_speed, 1)
 
         if max_speed == 0 or mul_speed == 0 or min_speed > max_speed:
-            return [0 in range(len(self._wheels))]
+            return [0] * len(self._wheels)
 
         if target_speed is None:
             target_speed = max_speed
@@ -280,11 +280,11 @@ class Pilot:
                 target_speed = max_speed * (target_speed / target_speed_abs)
 
         if course_percent == 0:
-            return [target_speed in range(len(self._wheels))]
+            return [target_speed] * len(self._wheels)
 
         if target_speed != 0 and min_speed == max_speed:
             speed = min_speed * (abs(target_speed) / target_speed)
-            return [speed in range(len(self._wheels))]
+            return [speed] * len(self._wheels)
 
         speeds = []
 
@@ -478,7 +478,8 @@ class Pilot:
                 min_wheel_speed = speeds_tacho[self._min_wheel]
                 max_wheel_speed = speeds_tacho[self._max_wheel]
 
-                speed_delta_per_offset_delta = max_wheel_speed - min_wheel_speed / max_wheel.offset - min_wheel.offset
+                speed_delta_per_offset_delta = \
+                    (max_wheel_speed - min_wheel_speed) / (max_wheel.offset - min_wheel.offset)
 
                 for i in range(len(speeds_tacho)):
                     wheel = self._wheels[i]
