@@ -51,7 +51,7 @@ class ScannerPropulsion:
 
     @property
     def angle_rad(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def rotate_to_pos(self, angle, speed=None):  # TODO: own regulator and method as target
         self.motor.run_to_abs_pos(speed_sp=self.motor.max_speed if speed is None else speed * self.total_ratio,
@@ -63,3 +63,16 @@ class ScannerPropulsion:
 
     def wait_to_stop(self):
         self.motor.wait_until(Motor.STATE_RUNNING)
+
+    def generate_json_info(self):
+        return {
+            'motor': {
+                'connected': self.connected,
+                'angle_deg': self.angle_deg if self.motor.connected else 'unavailable',
+                'speed': self.motor.speed if self.motor.connected else 'unavailable',
+                'running': self.is_running if self.motor.connected else 'unavailable'
+            },
+            'gear_ratio': self.gear_ratio,
+            'tacho_ratio': self.tacho_ratio,
+            'total_ratio': self.total_ratio
+        }

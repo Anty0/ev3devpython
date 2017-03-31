@@ -35,15 +35,28 @@ class LineFollowerApiRequestHandler(ProgramApiHandler):
     def destroy_controller():
         self = LineFollowerApiRequestHandler
         with self._lock:
-            self._target.controller.stop()
-            self._target.controller.wait_to_stop()
-            self._target.shared_data.reset()
+            if self._target is not None:
+                self._target.controller.stop()
+                self._target.controller.wait_to_stop()
+                self._target.shared_data.reset()
 
     def get_config(self):
-        return super().get_config()
+        return self._target.shared_data.config.extract_config_values()
 
     def update_config(self, config: dict):
-        return super().update_config(config)
+        self._target.shared_data.config.update_config(config)
 
     def get_api_actions(self):
-        return super().get_api_actions()
+        return {}
+
+    def resume(self):
+        self._target.shared_data.pause = False
+
+    def pause(self):
+        self._target.shared_data.pause = True
+
+    def get_new_graphs(self):
+        return self._target.shared_data.get_new_graphs()
+
+    def get_hw_info(self):
+        return self._target.shared_data.generate_json_info()

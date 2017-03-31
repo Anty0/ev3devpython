@@ -21,8 +21,10 @@ class ShareAccessInterface:
     def request_resume(self, thread_name: str = None):
         self._threads.request_resume(thread_name)
 
-    def request_pause(self, thread_name: str = None):
+    def request_pause(self, thread_name: str = None, wait_to_pause: bool = False):
         self._threads.request_pause(thread_name)
+        if wait_to_pause:
+            self._threads.wait_to_pause(thread_name)
 
     def should_run(self):
         return self._threads.run
@@ -77,7 +79,7 @@ class Threads:
         self.share_access_interfaces = {}
         self.running_threads = {}
 
-        for name, starter in starters:
+        for name, starter in starters.items():
             self.events[name] = Events()
             self.share_access_interfaces[name] = ShareAccessInterface(name, self, shared_data)
 
@@ -133,7 +135,8 @@ class Threads:
         start_time = time.time() if timeout is not None else None
         for thread_events in self.events.values():
             next_timeout = None if timeout is None else timeout - (time.time() - start_time)
-            if next_timeout < 0 or not getattr(getattr(thread_events, event_name), method_name)(timeout=next_timeout):
+            if (next_timeout is not None and next_timeout < 0) \
+                    or not getattr(getattr(thread_events, event_name), method_name)(timeout=next_timeout):
                 return False
 
         return True

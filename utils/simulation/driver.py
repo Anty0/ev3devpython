@@ -1,6 +1,6 @@
 import math
 import time
-from threading import Thread, Event
+from threading import Thread, Condition, Lock
 
 from ev3dev.auto import Motor, TouchSensor, ColorSensor, UltrasonicSensor, \
     GyroSensor, InfraredSensor, SoundSensor, LightSensor
@@ -27,7 +27,7 @@ class MotorDriver(DeviceDriver):
     def __init__(self, controller: Controller, device_interface: MotorInterface):
         DeviceDriver.__init__(self, controller, device_interface)
         self._address = device_interface.address
-        self._command_applied_event = Event()
+        self._command_applied_condition = Condition(Lock())
         self._last_command = ''
         self._command = 'stop'
         self._commands = device_interface.commands
@@ -90,8 +90,7 @@ class MotorDriver(DeviceDriver):
                     command_args = {}
                 self._last_command = actual_command
 
-            self._command_applied_event.set()
-            self._command_applied_event.clear()
+            self._command_applied_condition.notify_all()
 
             if actual_command == 'run-forever':
                 speed = command_args['speed']
@@ -175,18 +174,18 @@ class MotorDriver(DeviceDriver):
             self._commands_handler_thread.start()
 
         while self._last_command != self._command:
-            self._command_applied_event.wait()
+            self._command_applied_condition.wait()
 
         if self._command == value:
             self._command = ''
 
             while self._last_command != self._command:
-                self._command_applied_event.wait()
+                self._command_applied_condition.wait()
 
         self._command = value
 
         while self._last_command != self._command:
-            self._command_applied_event.wait()
+            self._command_applied_condition.wait()
 
     @property
     def commands(self):

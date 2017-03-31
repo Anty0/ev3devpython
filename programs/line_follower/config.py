@@ -20,10 +20,6 @@ CONFIG_VALUES['REG_STEER_D'] = {
     'category': 'Steer regulation', 'display_name': 'Regulator STEER-D',
     'type': 'float', 'default_value': float(0)  # Derivative gain. Start value 0
 }
-CONFIG_VALUES['PAUSE_POWER'] = {
-    'category': 'Power', 'display_name': 'Pause',
-    'type': 'bool', 'default_value': True
-}
 CONFIG_VALUES['TARGET_POWER'] = {
     'category': 'Power', 'display_name': 'Target power',
     'type': 'int', 'default_value': 20

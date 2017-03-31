@@ -3,9 +3,18 @@ from http.server import HTTPServer
 from threading import Thread, Event
 
 from utils.web.api_http_handler import ApiHTTPRequestHandler
-from .log import get_logger
+from .log import get_logger, add_logging_listener
 
 log = get_logger(__name__)
+LOG_CHANGES = ''
+
+
+def _add_to_log_changes(msg):
+    global LOG_CHANGES
+    LOG_CHANGES += msg
+
+
+add_logging_listener(_add_to_log_changes)
 
 
 class ProgramApiHandler(ApiHTTPRequestHandler):
@@ -13,17 +22,25 @@ class ProgramApiHandler(ApiHTTPRequestHandler):
         return {
             'api': {
                 'index.esp': 'command://get_api_dict',
-
-                'getConfigMap.esp': 'command://get_config_map',
-                'getConfig.esp': 'command://get_config',
-                'updateConfig.esp': 'command://update_config',
-
-                'getActions.esp': 'command://get_actions',
-                'action.esp': 'command://exec_action',
-
-                'isPaused.esp': 'command://is_paused',
-                'pause.esp': 'command://pause',
-                'resume.esp': 'command://resume'
+                'config': {
+                    'getConfigMap.esp': 'command://get_config_map',
+                    'getConfig.esp': 'command://get_config',
+                    'updateConfig.esp': 'command://update_config'
+                },
+                'actions': {
+                    'getActions.esp': 'command://get_actions',
+                    'executeAction.esp': 'command://exec_action'
+                },
+                'pause': {
+                    'isPaused.esp': 'command://is_paused',
+                    'pause.esp': 'command://pause',
+                    'resume.esp': 'command://resume'
+                },
+                'utils': {
+                    'getLogChanges.esp': 'command://get_log_changes',
+                    'getNewGraphs.esp': 'command://get_new_graphs',
+                    'getHWInfo.esp': 'command://get_hw_info'
+                }
             }
         }
 
@@ -47,6 +64,12 @@ class ProgramApiHandler(ApiHTTPRequestHandler):
 
     def resume(self):
         pass
+
+    def get_new_graphs(self) -> list:
+        return []
+
+    def get_hw_info(self) -> dict:
+        return {}
 
     def command_get_config(self, path, post_args, get_args):
         self.send_response(200)
@@ -140,6 +163,51 @@ class ProgramApiHandler(ApiHTTPRequestHandler):
             try:
                 self.resume()
                 self.wfile.write(json.dumps({'success': True}).encode())
+            except Exception as e:
+                log.exception(e)
+                self.wfile.write(json.dumps({'success': False}).encode())
+
+        return True
+
+    def command_get_log_changes(self, path, post_args, get_args):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            try:
+                global LOG_CHANGES
+                log_changes = LOG_CHANGES
+                LOG_CHANGES = ''
+                self.wfile.write(json.dumps({'success': True, 'result': log_changes}).encode())
+            except Exception as e:
+                log.exception(e)
+                self.wfile.write(json.dumps({'success': False}).encode())
+
+        return True
+
+    def command_get_new_graphs(self, path, post_args, get_args):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            try:
+                self.wfile.write(json.dumps({'success': True, 'result': self.get_new_graphs()}).encode())
+            except Exception as e:
+                log.exception(e)
+                self.wfile.write(json.dumps({'success': False}).encode())
+
+        return True
+
+    def command_get_hw_info(self, path, post_args, get_args):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        if self.command != 'HEAD':
+            try:
+                self.wfile.write(json.dumps({'success': True, 'result': self.get_hw_info()}).encode())
             except Exception as e:
                 log.exception(e)
                 self.wfile.write(json.dumps({'success': False}).encode())

@@ -620,6 +620,45 @@ class Pilot:
             positions.append(wheel.motor.position)
         return positions
 
+    def positions_change_to_angle(self, positions_change):  # TODO: test direction
+        positions_change_len = len(positions_change)
+        if positions_change_len != len(self._wheels):
+            raise Exception('Invalid positions_change length.')
+
+        if positions_change_len < 2 or self._wheels[self._min_wheel].offset == self._wheels[self._max_wheel].offset:
+            return 0
+
+        min_offset = self._wheels[self._min_wheel].offset
+        max_offset = self._wheels[self._max_wheel].offset
+        min_traveled = positions_change[self._min_wheel]
+        max_traveled = positions_change[self._max_wheel]
+
+        if abs(max_traveled) + abs(min_traveled) < 0.5:
+            return False
+
+        if min_traveled == max_traveled:
+            return 0
+        elif max_traveled == 0:
+            min_radius = min_offset - max_offset
+            max_radius = 0
+        elif min_traveled == 0:
+            min_radius = 0
+            max_radius = max_offset - min_offset
+        else:
+            ratio = min_traveled / max_traveled
+            radius = (min_offset - ratio * max_offset) / (ratio - 1)
+            min_radius = radius + min_offset
+            max_radius = radius + max_offset
+
+        if abs(min_radius) > abs(max_radius):
+            circuit = 2 * min_radius * math.pi
+            angle_deg = (min_traveled / circuit) * 360
+        else:
+            circuit = 2 * max_radius * math.pi
+            angle_deg = (max_traveled / circuit) * 360
+
+        return angle_deg
+
     def get_states(self):
         states = []
         for wheel in self._wheels:
@@ -661,3 +700,11 @@ class Pilot:
                     continue
 
             break
+
+    def generate_json_info(self):
+        return {
+            'running': self.is_running(),
+            'wheels': [
+                wheel.generate_json_info() for wheel in self._wheels
+            ]
+        }

@@ -24,3 +24,10 @@ class Range:
 
     def to_percent(self, val):
         return (val - self._val_min) / self._val_diff * 100
+
+    def generate_json_info(self):
+        return {
+            'val_min': self._val_min,
+            'val_max': self._val_max,
+            'val_diff': self._val_diff
+        }

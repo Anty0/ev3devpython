@@ -22,7 +22,7 @@ class LogSteamHandler:
     def write(self, msg):
         sys.stdout.write(msg)
         for listener in logging_listeners:
-            listener.handle_msg(msg)
+            listener(msg)
 
 
 root = logging.getLogger()

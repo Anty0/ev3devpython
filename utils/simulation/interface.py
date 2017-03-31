@@ -11,6 +11,9 @@ class DeviceInterface:
         self.driver_name = 'unknown'
         self.name = 'unknown'
 
+    def generate_json_info(self):
+        return self.__dict__.copy()
+
 
 class MotorInterface(DeviceInterface):
     def __init__(self, position: Position2D):

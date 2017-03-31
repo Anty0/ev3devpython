@@ -3,57 +3,57 @@ from utils.hardware.sensor import SensorHeadMode
 
 
 class Scanner:
-    def __init__(self, scanner_propulsion: ScannerPropulsion, scanner_head: SensorHeadMode):
-        self._scanner_propulsion = scanner_propulsion
-        self._scanner_head = scanner_head
+    def __init__(self, propulsion: ScannerPropulsion, head: SensorHeadMode):
+        self._propulsion = propulsion
+        self._head = head
 
     @property
     def head(self):
-        return self._scanner_head
+        return self._head
 
     @property
     def propulsion(self):
-        return self._scanner_propulsion
+        return self._propulsion
 
     def reset(self):
-        self._scanner_head.reset()
-        self._scanner_propulsion.reset()
+        self._head.reset()
+        self._propulsion.reset()
 
     def rotate_to_pos(self, angle, speed=None):
-        self._scanner_propulsion.rotate_to_pos(angle, speed)
+        self._propulsion.rotate_to_pos(angle, speed)
 
     @property
     def head_connected(self):
-        return self._scanner_head.connected
+        return self._head.connected
 
     @property
     def motor_connected(self):
-        return self._scanner_propulsion.connected
+        return self._propulsion.connected
 
     @property
     def is_running(self):
-        return self._scanner_propulsion.is_running
+        return self._propulsion.is_running
 
     @property
     def value_max(self):
-        return self._scanner_head.value_range.val_max
+        return self._head.value_range.val_max
 
     def repeat_while_running(self, method):
-        self._scanner_propulsion.repeat_while_running(method)
+        self._propulsion.repeat_while_running(method)
 
     def wait_to_stop(self):
-        self._scanner_propulsion.wait_to_stop()
+        self._propulsion.wait_to_stop()
 
-    def value(self, percent=True, n=0):
-        return self._scanner_head.value(percent, n)
+    def value(self, percent=False, n=0):
+        return self._head.value(percent, n)
 
-    def values(self, percent=True):
-        return self._scanner_head.values(percent)
+    def values(self, percent=False):
+        return self._head.values(percent)
 
     def angle_deg(self):
-        return self._scanner_propulsion.angle_deg
+        return self._propulsion.angle_deg
 
-    def value_scan(self, angle=0, percent=True, n=0):
+    def value_scan(self, angle=0, percent=False, n=0):
         if self.motor_connected:
             if self.angle_deg != angle:
                 self.rotate_to_pos(angle)
@@ -62,6 +62,12 @@ class Scanner:
             raise Exception('Scanner motor is not connected')
         return self.value(percent, n)
 
-    def value_scan_continuous(self, to_angle, value_handler, percent=True, n=0):
+    def value_scan_continuous(self, to_angle, value_handler, percent=False, n=0):
         self.rotate_to_pos(to_angle)
         self.repeat_while_running(lambda: value_handler(self.value(percent, n), self.angle_deg))
+
+    def generate_json_info(self):
+        return {
+            'propulsion': self.propulsion.generate_json_info(),
+            'head': self.head.generate_json_info()
+        }

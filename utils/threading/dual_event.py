@@ -9,16 +9,16 @@ class DualEvent:
         self._inverted_event.set()
 
     def is_set(self):
-        with self._event:
+        with self._lock:
             return self._event.is_set()
 
     def set(self):
-        with self._event:
+        with self._lock:
             self._event.set()
             self._inverted_event.clear()
 
     def clear(self):
-        with self._event:
+        with self._lock:
             self._event.clear()
             self._inverted_event.set()
 

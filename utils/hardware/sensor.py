@@ -36,8 +36,16 @@ class SensorHeadMode:
     def value(self, percent=False, n=0):
         return self._process_value(self._sensor.value(n), percent, n)
 
-    def values(self, percent):
+    def values(self, percent=False):
         return [self.value(percent, n) for n in range(self._sensor.num_values)]
+
+    def generate_json_info(self):
+        return {
+            'sensor': {
+                'values': self.values(False)
+            },
+            'value_range': self.value_range.generate_json_info()
+        }
 
 
 class SensorHeadDistanceMode(SensorHeadMode):

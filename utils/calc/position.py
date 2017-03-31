@@ -25,4 +25,11 @@ class Position2D:
                           self.y + offset_position.y,
                           self.angle_deg + offset_position.angle_deg)
 
+    def generate_json_info(self):
+        return {
+            'x': self.x,
+            'y': self.y,
+            'angle_deg': self.angle_deg
+        }
+
         # TODO: add some basic calculations support methods

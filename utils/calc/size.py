@@ -21,4 +21,12 @@ class Size:
     def weight(self):
         return self._weight
 
+    def generate_json_info(self):
+        return {
+            'width': self.width,
+            'length': self.length,
+            'height': self.height,
+            'weight': self.weight
+        }
+
         # TODO: add some calculations

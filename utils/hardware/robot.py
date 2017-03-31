@@ -1,10 +1,11 @@
 from utils.calc.position import Position2D
 
 from utils.calc.size import Size
+from utils.simulation.interface import DeviceInterface
 
 
 class Robot:
-    def __init__(self, size: Size, *devices_interfaces: list,
+    def __init__(self, size: Size, *devices_interfaces: DeviceInterface,
                  position: Position2D = None):
         self._size = size
         self._devices_interfaces = devices_interfaces
@@ -25,3 +26,12 @@ class Robot:
     @position.setter
     def position(self, value):
         self._position = value
+
+    def generate_json_info(self, detailed: bool = False):
+        return {
+            'size': self.size.generate_json_info(),
+            'position': self.position.generate_json_info(),
+            'devices_interfaces': [
+                device_interface.generate_json_info() for device_interface in self.devices_interfaces
+            ] if detailed else len(self.devices_interfaces)
+        }
