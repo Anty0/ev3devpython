@@ -1,3 +1,6 @@
+import math
+
+
 class Position2D:
     def __init__(self, x: float, y: float, angle_deg: float):
         self._x = x
@@ -25,11 +28,19 @@ class Position2D:
                           self.y + offset_position.y,
                           self.angle_deg + offset_position.angle_deg)
 
+    def offset_by_raw(self, x: float, y: float, angle_deg: float):
+        # TODO: if self.angle != 0 offset x and y by rotated offset
+        return Position2D(self.x + x, self.y + y,
+                          self.angle_deg + angle_deg)
+
+    def distance_to(self, position):
+        return math.sqrt((self.x - position.x) ** 2 + (self.y - position.y) ** 2)
+
+        # TODO: add some basic calculations support methods
+
     def generate_json_info(self):
         return {
             'x': self.x,
             'y': self.y,
             'angle_deg': self.angle_deg
         }
-
-        # TODO: add some basic calculations support methods

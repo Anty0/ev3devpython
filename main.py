@@ -2,6 +2,7 @@
 import json
 import signal
 import sys
+
 from collections import OrderedDict
 
 from programs.line_follower.program import LineFollowProgram
@@ -32,7 +33,7 @@ def run():
     if '--help' in sys.argv or '-h' in sys.argv:
         if program_info is None:
             print('Usages: Run program   - ./main.py --run program_name [--config config_file_path] '
-                  '[--simulate|-s] [--hw normal|fast]\n'
+                  '[--simulate|-s] [--hw-normal|--hw-fast] [--debug]\n'
                   '        About program - ./main.py --run program_name --help|-h\n'
                   '        This help     - ./main.py [--help|-h]\n\n'
                   'Available programs:\n' +
@@ -63,6 +64,7 @@ def run():
             log.log('Can\'t load config form file ' + str(config_path) + '. Exiting...')
             exit()
 
+    # TODO: if not DEBUG_MODE: 'wait on enter press'
     program = program_class()
     if program.start(config):
         def handle_exit(signum, frame):

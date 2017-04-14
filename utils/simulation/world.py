@@ -4,7 +4,6 @@ from threading import Thread
 
 from utils.hardware.robot import Robot
 from utils.utils import wait_to_cycle_time
-from .map import Map
 
 
 # class RobotInfo:
@@ -52,10 +51,10 @@ from .map import Map
 #         return self._leds
 
 
-class Controller:
-    def __init__(self, robot: Robot, surrounding_map: Map):
+class World:
+    def __init__(self, robot: Robot):
         self._robot = robot
-        self._map = surrounding_map
+        self._map = None  # TODO: create
         self._odometry = None
 
     @property

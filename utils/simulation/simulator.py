@@ -1,10 +1,11 @@
 from utils.calc.position import Position2D
+from utils.simulation.world import World
 from . import driver, interface
 
 
 class SimulatedEnvironment:
-    def __init__(self, controller):
-        self._controller = controller
+    def __init__(self, world: World):
+        self._world = world
         self._environment = {}
 
     def get_environment(self):
@@ -23,7 +24,7 @@ class SimulatedEnvironment:
         self._environment[class_name][name + str(index)] = device
 
     def create_device(self, device_interface):
-        device = driver.DRIVERS[device_interface.driver_name](self._controller, device_interface)
+        device = driver.DRIVERS[device_interface.driver_name](self._world, device_interface)
         self._add_device(device_interface, device)
 
 

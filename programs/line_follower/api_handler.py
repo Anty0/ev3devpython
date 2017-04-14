@@ -47,7 +47,13 @@ class LineFollowerApiRequestHandler(ProgramApiHandler):
         self._target.shared_data.config.update_config(config)
 
     def get_api_actions(self):
-        return {}
+        return {'Perform line scan': 'perform_line_scan'}
+
+    def action_perform_line_scan(self):
+        self._target.shared_data.data.perform_line_scan = True
+
+    def is_paused(self):
+        return self._target.shared_data.pause
 
     def resume(self):
         self._target.shared_data.pause = False

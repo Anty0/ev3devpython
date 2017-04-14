@@ -1,3 +1,5 @@
+import time
+
 from ev3dev.auto import Motor
 
 
@@ -32,9 +34,9 @@ class ScannerPropulsion:
         if not self.connected:
             return
         self.motor.stop_action = Motor.STOP_ACTION_BRAKE
-        self.rotate_to_pos(0, speed=self.motor.max_speed / 10)
+        self.rotate_to_abs_pos(0, speed=self.motor.max_speed / 10)
         self.wait_to_stop()
-        self.rotate_to_pos(0, speed=self.motor.max_speed / 10)
+        self.rotate_to_abs_pos(0, speed=self.motor.max_speed / 10)
         self.wait_to_stop()
         self.motor.reset()
         self.motor.stop_action = Motor.STOP_ACTION_BRAKE
@@ -53,16 +55,25 @@ class ScannerPropulsion:
     def angle_rad(self):
         raise NotImplementedError()
 
-    def rotate_to_pos(self, angle, speed=None):  # TODO: own regulator and method as target
-        self.motor.run_to_abs_pos(speed_sp=self.motor.max_speed if speed is None else speed * self.total_ratio,
-                                  position_sp=angle * self.total_ratio)
+    def _angle(self, angle: float):
+        return angle * self.total_ratio
+
+    def _speed(self, speed: float = None):
+        return self.motor.max_speed if speed is None else speed * self.total_ratio
+
+    def rotate_to_abs_pos(self, angle, speed: float = None):
+        self.motor.run_to_abs_pos(speed_sp=self._speed(speed), position_sp=self._angle(angle))
+
+    def rotate_to_rel_pos(self, angle, speed: float = None):
+        self.motor.run_to_rel_pos(speed_sp=self._speed(speed), position_sp=self._angle(angle))
 
     def repeat_while_running(self, method):
         while self.is_running:
             method()
 
     def wait_to_stop(self):
-        self.motor.wait_until(Motor.STATE_RUNNING)
+        while Motor.STATE_RUNNING in self.motor.state:
+            time.sleep(0.1)
 
     def generate_json_info(self):
         return {

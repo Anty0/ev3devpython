@@ -1,18 +1,14 @@
-from utils.utils import crop_r
+from utils.utils import crop_m
 
 
 class RegulatorBase:
-    def __init__(self, const_p=None, const_i=None, const_d=None, const_target=None,
-                 getter_p=None, getter_i=None, getter_d=None, getter_target=None):
-        self._const_p = const_p
-        self._const_i = const_i
-        self._const_d = const_d
-        self._const_target = const_target
-
-        self._getter_p = getter_p
-        self._getter_i = getter_i
-        self._getter_d = getter_d
-        self._getter_target = getter_target
+    def __init__(self, const_p: float = None, const_i: float = None, const_d: float = None, const_target: float = None,
+                 getter_p: callable = None, getter_i: callable = None, getter_d: callable = None,
+                 getter_target: callable = None):
+        self.p = (lambda: const_p) if getter_p is None else getter_p
+        self.i = (lambda: const_i) if getter_i is None else getter_i
+        self.d = (lambda: const_d) if getter_d is None else getter_d
+        self.target = (lambda: const_target) if getter_target is None else getter_target
 
         self.loop_count = 0
         self.last_error = 0
@@ -25,29 +21,13 @@ class RegulatorBase:
         self.last_derivative = 0
         self.last_integral = 0
 
-    def get_p(self) -> float:
-        result = self._getter_p() if self._getter_p is not None else None
-        return result if result is not None else self._const_p
-
-    def get_i(self) -> float:
-        result = self._getter_i() if self._getter_i is not None else None
-        return result if result is not None else self._const_i
-
-    def get_d(self) -> float:
-        result = self._getter_d() if self._getter_d is not None else None
-        return result if result is not None else self._const_d
-
-    def get_target(self) -> float:
-        result = self._getter_target() if self._getter_target is not None else None
-        return result if result is not None else self._const_target
-
     def regulate(self, input_val) -> float:
         self.loop_count += 1
         return 0
 
 
 class ValueRegulator(RegulatorBase):
-    def __init__(self, const_p=None, const_i=None, const_d=None, const_target=None,
+    def __init__(self, const_p: float = None, const_i: float = None, const_d: float = None, const_target: float = None,
                  getter_p=None, getter_i=None, getter_d=None, getter_target=None):
         RegulatorBase.__init__(self, const_p, const_i, const_d, const_target,
                                getter_p, getter_i, getter_d, getter_target)
@@ -55,7 +35,7 @@ class ValueRegulator(RegulatorBase):
     def regulate(self, input_val) -> float:
         RegulatorBase.regulate(self, input_val)
 
-        target = self.get_target()
+        target = self.target()
         error = target - input_val
         return self.regulate_error(error)
 
@@ -67,25 +47,27 @@ class ValueRegulator(RegulatorBase):
         self.last_error = error
         self.last_derivative = derivative
 
-        return self.get_p() * error + self.get_i() * integral + self.get_d() * derivative
+        return self.p() * error + self.i() * integral + self.d() * derivative
 
 
-class PercentRegulator(ValueRegulator):
-    def __init__(self, const_p=None, const_i=None, const_d=None, const_target=None,
-                 getter_p=None, getter_i=None, getter_d=None, getter_target=None):
+class RangeRegulator(ValueRegulator):
+    def __init__(self, min_input: float = 0, max_input: float = 100, const_p: float = None, const_i: float = None,
+                 const_d: float = None, const_target: float = None, getter_p=None, getter_i=None, getter_d=None,
+                 getter_target=None):
         ValueRegulator.__init__(self, const_p, const_i, const_d, const_target,
                                 getter_p, getter_i, getter_d, getter_target)
+        self.min_input = min_input
+        self.max_input = max_input
 
     def regulate(self, input_val) -> float:
         RegulatorBase.regulate(self, input_val)
 
-        input_val = crop_r(input_val)
-        target = self.get_target()
-        max_positive_error = abs(100 - target) * 0.6
-        max_negative_error = abs(-target) * 0.6
+        input_val = crop_m(input_val, min_out=self.min_input, max_out=self.max_input)
+        target = self.target()
 
         error = target - input_val
-        max_error = max_negative_error if error < 0 else max_positive_error
-        error *= 100 / max_error
+        if error != 0:
+            max_error = min(abs(self.max_input - target), abs(self.min_input - target)) * 0.8
+            error *= 100 / max_error
 
         return self.regulate_error(error)

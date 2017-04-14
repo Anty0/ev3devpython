@@ -1,20 +1,20 @@
 import math
 import time
-from threading import Thread, Condition, Lock
+from threading import Thread, Event
 
 from ev3dev.auto import Motor, TouchSensor, ColorSensor, UltrasonicSensor, \
     GyroSensor, InfraredSensor, SoundSensor, LightSensor
 
 from utils.utils import wait_to_cycle_time
-from .controller import Controller
 from .interface import DeviceInterface, MotorInterface, SensorInterface, TouchSensorInterface, ColorSensorInterface, \
     UltrasonicSensorInterface, GyroSensorInterface, InfraredSensorInterface, SoundSensorInterface, \
     LightSensorInterface, LedInterface
+from .world import World
 
 
 class DeviceDriver:
-    def __init__(self, controller: Controller, device_interface: DeviceInterface):
-        self._controller = controller
+    def __init__(self, world: World, device_interface: DeviceInterface):
+        self._world = world
         self._driver_name = device_interface.driver_name
         self._position = device_interface.position
 
@@ -24,10 +24,10 @@ class DeviceDriver:
 
 
 class MotorDriver(DeviceDriver):
-    def __init__(self, controller: Controller, device_interface: MotorInterface):
-        DeviceDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: MotorInterface):
+        DeviceDriver.__init__(self, world, device_interface)
         self._address = device_interface.address
-        self._command_applied_condition = Condition(Lock())
+        self._command_applied_event = Event()
         self._last_command = ''
         self._command = 'stop'
         self._commands = device_interface.commands
@@ -90,7 +90,8 @@ class MotorDriver(DeviceDriver):
                     command_args = {}
                 self._last_command = actual_command
 
-            self._command_applied_condition.notify_all()
+            self._command_applied_event.set()
+            self._command_applied_event.clear()
 
             if actual_command == 'run-forever':
                 speed = command_args['speed']
@@ -174,18 +175,18 @@ class MotorDriver(DeviceDriver):
             self._commands_handler_thread.start()
 
         while self._last_command != self._command:
-            self._command_applied_condition.wait()
+            self._command_applied_event.wait()
 
         if self._command == value:
             self._command = ''
 
             while self._last_command != self._command:
-                self._command_applied_condition.wait()
+                self._command_applied_event.wait()
 
         self._command = value
 
         while self._last_command != self._command:
-            self._command_applied_condition.wait()
+            self._command_applied_event.wait()
 
     @property
     def commands(self):
@@ -323,8 +324,8 @@ class MotorDriver(DeviceDriver):
 
 
 class SensorDriver(DeviceDriver):
-    def __init__(self, controller: Controller, device_interface: SensorInterface):
-        DeviceDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: SensorInterface):
+        DeviceDriver.__init__(self, world, device_interface)
         self._address = device_interface.address
         self._commands = []
         self._mode = device_interface.mode
@@ -411,8 +412,8 @@ class SensorDriver(DeviceDriver):
 
 
 class TouchSensorDriver(SensorDriver):
-    def __init__(self, controller: Controller, device_interface: TouchSensorInterface):
-        SensorDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: TouchSensorInterface):
+        SensorDriver.__init__(self, world, device_interface)
         self._commands = []  # TODO: extract from robot
         self._modes = [TouchSensor.MODE_TOUCH]
         self._decimals = {TouchSensor.MODE_TOUCH: 0}
@@ -422,13 +423,13 @@ class TouchSensorDriver(SensorDriver):
     @property
     def value0(self):
         if self._mode == TouchSensor.MODE_TOUCH:
-            return str(int(self._controller.is_pos_in_wall(self._position)))
+            return str(int(self._world.is_pos_in_wall(self._position)))
         raise Exception()
 
 
 class ColorSensorDriver(SensorDriver):
-    def __init__(self, controller: Controller, device_interface: ColorSensorInterface):
-        SensorDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: ColorSensorInterface):
+        SensorDriver.__init__(self, world, device_interface)
         self._commands = []
         self._modes = [ColorSensor.MODE_COL_REFLECT, ColorSensor.MODE_COL_AMBIENT, ColorSensor.MODE_COL_COLOR,
                        ColorSensor.MODE_REF_RAW, ColorSensor.MODE_RGB_RAW]
@@ -457,15 +458,15 @@ class ColorSensorDriver(SensorDriver):
     @property
     def value0(self):
         if self._mode == ColorSensor.MODE_COL_REFLECT:
-            return str(int(self._controller.get_reflect_on_pos(self._position)))
+            return str(int(self._world.get_reflect_on_pos(self._position)))
         if self._mode == ColorSensor.MODE_COL_AMBIENT:
-            return str(int(self._controller.get_light_on_pos(self._position)))
+            return str(int(self._world.get_light_on_pos(self._position)))
         if self._mode == ColorSensor.MODE_COL_COLOR:
             return str(int(0))  # TODO: implement
         if self._mode == ColorSensor.MODE_REF_RAW:
             return str(int(0))  # TODO: implement
         if self._mode == ColorSensor.MODE_RGB_RAW:
-            return str(int(self._controller.get_color_rgb_on_pos(self._position)[0]))
+            return str(int(self._world.get_color_rgb_on_pos(self._position)[0]))
         raise Exception()
 
     @property
@@ -473,19 +474,19 @@ class ColorSensorDriver(SensorDriver):
         if self._mode == ColorSensor.MODE_REF_RAW:
             return str(int(0))  # TODO: implement
         if self._mode == ColorSensor.MODE_RGB_RAW:
-            return str(int(self._controller.get_color_rgb_on_pos(self._position)[1]))
+            return str(int(self._world.get_color_rgb_on_pos(self._position)[1]))
         raise Exception()
 
     @property
     def value2(self):
         if self._mode == ColorSensor.MODE_RGB_RAW:
-            return str(int(self._controller.get_color_rgb_on_pos(self._position)[2]))
+            return str(int(self._world.get_color_rgb_on_pos(self._position)[2]))
         raise Exception()
 
 
 class UltrasonicSensorDriver(SensorDriver):
-    def __init__(self, controller: Controller, device_interface: UltrasonicSensorInterface):
-        SensorDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: UltrasonicSensorInterface):
+        SensorDriver.__init__(self, world, device_interface)
         ev3 = self._driver_name == 'lego-ev3-us'
         self._commands = []
         self._modes = [UltrasonicSensor.MODE_US_DIST_CM, UltrasonicSensor.MODE_US_DIST_IN,
@@ -516,7 +517,7 @@ class UltrasonicSensorDriver(SensorDriver):
 
     def _on_mode_change(self, old_mode, new_mode):
         if new_mode == UltrasonicSensor.MODE_US_SI_CM or new_mode == UltrasonicSensor.MODE_US_SI_IN:
-            self._tmp_value = self._controller.get_distance_on_pos(self._position)
+            self._tmp_value = self._world.get_distance_on_pos(self._position)
         else:
             self._tmp_value = 0
 
@@ -524,12 +525,12 @@ class UltrasonicSensorDriver(SensorDriver):
     def value0(self):  # TODO: crop distance values
         ev3 = self._driver_name == 'lego-ev3-us'
         if self._mode == UltrasonicSensor.MODE_US_DIST_CM:
-            distance = self._controller.get_distance_on_pos(self._position)
+            distance = self._world.get_distance_on_pos(self._position)
             return str(int((distance * (10 if ev3 else 1)) if math.isfinite(distance) and
                                                               distance < (2550 if ev3 else 255) else (
                 2550 if ev3 else 255)))  # map must be in cm
         if self._mode == UltrasonicSensor.MODE_US_DIST_IN:
-            distance = self._controller.get_distance_on_pos(self._position)
+            distance = self._world.get_distance_on_pos(self._position)
             return str(int((distance * 10) if math.isfinite(distance) and
                                               distance < 1003 else 1003))  # map must be in inch
         if self._mode == UltrasonicSensor.MODE_US_LISTEN:
@@ -545,8 +546,8 @@ class UltrasonicSensorDriver(SensorDriver):
 
 
 class GyroSensorDriver(SensorDriver):
-    def __init__(self, controller: Controller, device_interface: GyroSensorInterface):
-        SensorDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: GyroSensorInterface):
+        SensorDriver.__init__(self, world, device_interface)
         self._commands = []
         self._modes = [GyroSensor.MODE_GYRO_ANG, GyroSensor.MODE_GYRO_RATE, GyroSensor.MODE_GYRO_FAS,
                        GyroSensor.MODE_GYRO_G_A, GyroSensor.MODE_GYRO_CAL]
@@ -575,12 +576,12 @@ class GyroSensorDriver(SensorDriver):
         self._on_mode_change(None, self._mode)
 
     def _on_mode_change(self, old_mode, new_mode):
-        self._start_angle = self._controller.get_actual_pos().get_angle_deg()
+        self._start_angle = self._world.get_actual_pos().get_angle_deg()
 
     @property
     def value0(self):
         if self._mode == GyroSensor.MODE_GYRO_ANG or self._mode == GyroSensor.MODE_GYRO_G_A:
-            return str(self._controller.get_actual_pos().get_angle_deg() - self._start_angle)
+            return str(self._world.get_actual_pos().get_angle_deg() - self._start_angle)
         if self._mode == GyroSensor.MODE_GYRO_RATE:
             return str(0)  # TODO: add support
         if self._mode == GyroSensor.MODE_GYRO_FAS:
@@ -611,8 +612,8 @@ class GyroSensorDriver(SensorDriver):
 
 
 class InfraredSensorDriver(SensorDriver):
-    def __init__(self, controller: Controller, device_interface: InfraredSensorInterface):
-        SensorDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: InfraredSensorInterface):
+        SensorDriver.__init__(self, world, device_interface)
         self._commands = []
         self._modes = [InfraredSensor.MODE_IR_PROX, InfraredSensor.MODE_IR_SEEK, InfraredSensor.MODE_IR_REMOTE,
                        InfraredSensor.MODE_IR_REM_A, InfraredSensor.MODE_IR_CAL]
@@ -641,7 +642,7 @@ class InfraredSensorDriver(SensorDriver):
     @property
     def value0(self):  # TODO: crop distance values
         if self._mode == InfraredSensor.MODE_IR_PROX:
-            distance = self._controller.get_distance_on_pos(self._position)
+            distance = self._world.get_distance_on_pos(self._position)
             return str(int((distance / 70 * 100) if math.isfinite(distance) and distance < 70 else 100))
         if self._mode == InfraredSensor.MODE_IR_SEEK:
             return str(0)  # TODO: add support
@@ -705,8 +706,8 @@ class InfraredSensorDriver(SensorDriver):
 
 
 class SoundSensorDriver(SensorDriver):
-    def __init__(self, controller: Controller, device_interface: SoundSensorInterface):
-        SensorDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: SoundSensorInterface):
+        SensorDriver.__init__(self, world, device_interface)
         self._commands = []
         self._modes = [SoundSensor.MODE_DB, SoundSensor.MODE_DBA]
         self._decimals = {
@@ -732,8 +733,8 @@ class SoundSensorDriver(SensorDriver):
 
 
 class LightSensorDriver(SensorDriver):
-    def __init__(self, controller: Controller, device_interface: LightSensorInterface):
-        SensorDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: LightSensorInterface):
+        SensorDriver.__init__(self, world, device_interface)
         self._commands = []
         self._modes = [LightSensor.MODE_REFLECT, LightSensor.MODE_AMBIENT]
         self._decimals = {
@@ -752,15 +753,15 @@ class LightSensorDriver(SensorDriver):
     @property
     def value0(self):
         if self._mode == LightSensor.MODE_REFLECT:
-            return str(int(self._controller.get_reflect_on_pos(self._position) * 10))
+            return str(int(self._world.get_reflect_on_pos(self._position) * 10))
         if self._mode == LightSensor.MODE_AMBIENT:
-            return str(int(self._controller.get_light_on_pos(self._position) * 10))
+            return str(int(self._world.get_light_on_pos(self._position) * 10))
         raise Exception()
 
 
 class LedDriver(DeviceDriver):
-    def __init__(self, controller: Controller, device_interface: LedInterface):
-        DeviceDriver.__init__(self, controller, device_interface)
+    def __init__(self, world: World, device_interface: LedInterface):
+        DeviceDriver.__init__(self, world, device_interface)
         self._max_brightness = device_interface.max_brightness
         self._brightness = device_interface.brightness
         self._triggers = device_interface.triggers

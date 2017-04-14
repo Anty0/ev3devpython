@@ -1,5 +1,7 @@
 from threading import Lock
 
+from utils.debug_mode import DEBUG_MODE
+from utils.program import graph_obj_to_string
 from utils.runtime_config import RuntimeConfig
 from .config import CONFIG_VALUES
 
@@ -21,11 +23,16 @@ class LineFollowerSharedData:
 
         self.config = RuntimeConfig(config_map=CONFIG_VALUES, config_modifications=config)
 
-        self.min_reflect = self.config.get_config_value('MIN_REFLECT')
-        self.max_reflect = self.config.get_config_value('MAX_REFLECT')
-        self.min_to_max_distance = self.config.get_config_value('MIN_TO_MAX_DISTANCE')
+        self.line_info = {
+            'max_position': 0,
+            'position_offset': 0,
+            'min_reflect': 0,
+            'max_reflect': 100,
+            'reflect_to_position_list': [0] * 101,
+        }
 
-        self.pause = True
+        self.pause = DEBUG_MODE
+        self.perform_line_scan = True
 
         self._graphs_lock = Lock()
         self._graphs = []
@@ -33,6 +40,7 @@ class LineFollowerSharedData:
     def add_new_graph(self, graph: dict):
         with self._graphs_lock:
             self._graphs.append(graph)
+        print(graph_obj_to_string(graph))
 
     def get_new_graphs(self) -> list:
         with self._graphs_lock:

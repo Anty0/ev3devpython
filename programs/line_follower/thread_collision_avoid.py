@@ -2,7 +2,7 @@ import time
 
 from hardware.hw_config import SCANNER_DISTANCE_HEAD_POSITION
 from programs.line_follower.config import THREAD_LINE_FOLLOW_NAME
-from utils.calc.regulator import PercentRegulator
+from utils.calc.regulator import RangeRegulator
 from utils.control.pilot import Pilot
 from utils.hardware.robot import Robot
 from utils.log import get_logger
@@ -35,8 +35,8 @@ def detect_collision(config: dict, scanner_distance: Scanner):
 
 
 def collision_avoid(shared: ShareAccessInterface, config: dict, pilot: Pilot, scanner_distance: Scanner):
-    power_regulator = PercentRegulator(const_p=1, const_i=3, const_d=2,  # TODO: to config
-                                       getter_target=lambda: config['OBSTACLE_MIN_DISTANCE'] * 0.8)
+    power_regulator = RangeRegulator(const_p=1, const_i=3, const_d=2,  # TODO: to config
+                                     getter_target=lambda: config['OBSTACLE_MIN_DISTANCE'] * 0.8)
 
     cycle_time = 0.05  # TODO: to config
     wait_time = 2  # TODO: to config
@@ -50,12 +50,12 @@ def collision_avoid(shared: ShareAccessInterface, config: dict, pilot: Pilot, sc
         power = power_regulator.regulate(distance_val) * -1
         pilot.update_duty_cycle(0, crop_m(power, max_out=0))
 
-        if distance_val > power_regulator.get_target():
+        if distance_val > power_regulator.target:
             pilot.stop()
 
             last_time = time.time()
             distance_val = scanner_distance.value_scan(0, percent=True)
-            while distance_val > power_regulator.get_target():
+            while distance_val > power_regulator.target:
                 if not shared.should_run():
                     return
 
@@ -67,20 +67,20 @@ def collision_avoid(shared: ShareAccessInterface, config: dict, pilot: Pilot, sc
                         for i in [-1, 1]:
                             side_distance_val = scanner_distance.value_scan(40 * i, percent=True)
 
-                            if side_distance_val < power_regulator.get_target():
-                                scanner_distance.rotate_to_pos(0)
+                            if side_distance_val < power_regulator.target:
+                                scanner_distance.rotate_to_abs_pos(0)
                                 problem = True
 
                     if problem:
                         continue
 
-                    scanner_distance.rotate_to_pos(0)
+                    scanner_distance.rotate_to_abs_pos(0)
 
                     target_speed = config['TARGET_POWER'] / 100 * pilot.get_max_speed_unit()
                     pilot.restore_positions(start_positions, speed_unit=target_speed)
 
                     distance_val = scanner_distance.value_scan(0, percent=True)
-                    while distance_val > power_regulator.get_target():
+                    while distance_val > power_regulator.target:
                         if not shared.should_run():
                             return
 
@@ -99,16 +99,17 @@ def collision_avoid(shared: ShareAccessInterface, config: dict, pilot: Pilot, sc
         last_time = wait_to_cycle_time(__name__, last_time, cycle_time)
 
     pilot.stop()
-    scanner_distance.rotate_to_pos(0)
+    scanner_distance.rotate_to_abs_pos(0)
 
 
 def obstacle_avoid(shared: ShareAccessInterface, config: dict, robot_info: Robot, pilot: Pilot,
                    scanner_distance: Scanner, scanner_reflect: Scanner):
     wait_time = 0.01
 
-    min_reflect = shared.data.min_reflect
-    max_reflect = shared.data.max_reflect
-    target_reflect = config['TARGET_REFLECT']
+    line_info = shared.data.line_info
+    min_reflect = line_info['min_reflect']
+    max_reflect = line_info['max_reflect']  # TODO: use new method
+    target_position = config['TARGET_POSITION']
 
     target_power = config['TARGET_POWER']
     target_speed = target_power / 100 * pilot.get_max_speed_unit()
@@ -126,7 +127,7 @@ def obstacle_avoid(shared: ShareAccessInterface, config: dict, robot_info: Robot
 
     pilot.run_percent_drive_to_angle_deg(90, course, speed_unit=target_speed)
     if detect:
-        scanner_distance.rotate_to_pos(scanner_pos)
+        scanner_distance.rotate_to_abs_pos(scanner_pos)
     pilot.wait_to_stop()
 
     if detect:
@@ -148,22 +149,22 @@ def obstacle_avoid(shared: ShareAccessInterface, config: dict, robot_info: Robot
         pilot.wait_to_stop()
 
     pilot.run_percent_drive_forever(0, speed_unit=target_speed)
-    scanner_distance.rotate_to_pos(0)
+    scanner_distance.rotate_to_abs_pos(0)
 
     def get_reflect_percent():
         return (scanner_reflect.value(percent=False) - min_reflect) / (max_reflect - min_reflect) * 100
 
-    while get_reflect_percent() > target_reflect:
+    while get_reflect_percent() > target_position:
         time.sleep(wait_time)
 
     pilot.run_percent_drive_forever(course, speed_unit=target_speed)
 
-    while get_reflect_percent() <= target_reflect:
+    while get_reflect_percent() <= target_position:
         time.sleep(wait_time)
 
     time.sleep(wait_time * 4)
 
-    while get_reflect_percent() > target_reflect:
+    while get_reflect_percent() > target_position:
         time.sleep(wait_time)
 
     pilot.stop()
@@ -172,7 +173,7 @@ def obstacle_avoid(shared: ShareAccessInterface, config: dict, robot_info: Robot
 def run_loop(shared: ShareAccessInterface):
     runtime_config = shared.data.config
     config = runtime_config.extract_config_values(
-        'TARGET_REFLECT', 'TARGET_POWER', 'OBSTACLE_AVOID', 'OBSTACLE_AVOID_SIDE', 'OBSTACLE_MIN_DISTANCE',
+        'TARGET_POSITION', 'TARGET_POWER', 'OBSTACLE_AVOID', 'OBSTACLE_AVOID_SIDE', 'OBSTACLE_MIN_DISTANCE',
         'OBSTACLE_WIDTH', 'OBSTACLE_HEIGHT', 'COLLISION_AVOID', 'TARGET_CYCLE_TIME'
     )
 
@@ -189,7 +190,7 @@ def run_loop(shared: ShareAccessInterface):
 
         if (config['OBSTACLE_AVOID'] or config['COLLISION_AVOID']) and not scanner_distance.is_running:
             if scanner_distance.angle_deg() != 0:
-                scanner_distance.rotate_to_pos(0)
+                scanner_distance.rotate_to_abs_pos(0)
                 scanner_distance.wait_to_stop()
                 continue
 

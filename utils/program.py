@@ -2,19 +2,29 @@ import json
 from http.server import HTTPServer
 from threading import Thread, Event
 
+from utils.calc.range import Range
+from utils.debug_mode import DEBUG_MODE
+from utils.graph import graph_to_string, GraphPoint
 from utils.web.api_http_handler import ApiHTTPRequestHandler
 from .log import get_logger, add_logging_listener
 
 log = get_logger(__name__)
 LOG_CHANGES = ''
 
+if DEBUG_MODE:
+    def _add_to_log_changes(msg):
+        global LOG_CHANGES
+        LOG_CHANGES += msg
 
-def _add_to_log_changes(msg):
-    global LOG_CHANGES
-    LOG_CHANGES += msg
+
+    add_logging_listener(_add_to_log_changes)
 
 
-add_logging_listener(_add_to_log_changes)
+def graph_obj_to_string(graph: dict, size_x: int = None, size_y: int = None, range_x: Range = None,
+                        range_y: Range = None):
+    return graph_to_string(graph['name'],
+                           [GraphPoint(point['x'], point['y']) for point in graph['content']],
+                           size_x, size_y, range_x, range_y)
 
 
 class ProgramApiHandler(ApiHTTPRequestHandler):
@@ -219,11 +229,14 @@ class Program:
     SERVER_PORT = 8000
 
     def __init__(self, request_handler_class=ApiHTTPRequestHandler):
-        self._server = HTTPServer(('', self.SERVER_PORT), request_handler_class)
-        self._server.timeout = 5
-        self._running = False
-        self._stop_event = Event()
-        self._stop_event.set()
+        if DEBUG_MODE:
+            self._server = HTTPServer(('', self.SERVER_PORT), request_handler_class)
+            self._server.timeout = 5
+        else:
+            self._server = None
+        self._request_stop_event = Event()
+        self._stopped_event = Event()
+        self._stopped_event.set()
 
     def _on_start(self, config: dict = None):
         pass
@@ -232,39 +245,44 @@ class Program:
         pass
 
     def is_running(self):
-        return self._running
+        return not self._stopped_event.is_set()
 
     def can_start(self):
         return not self.is_running()
 
     def wait_to_exit(self):
-        self._stop_event.wait()
+        self._stopped_event.wait()
 
     def start(self, config: dict = None):
         if not self.can_start():
             return False
 
-        self._stop_event.clear()
-        self._running = True
+        self._request_stop_event.clear()
+        self._stopped_event.clear()
 
         def run_server():
             try:
                 self._on_start(config)
-                self._server.serve_forever()
+                self._server.serve_forever() if DEBUG_MODE else self._request_stop_event.wait()
             except (KeyboardInterrupt, Exception) as e:
                 log.exception(e)
             finally:
                 self._on_exit()
                 self._running = False
-                self._stop_event.set()
+                self._stopped_event.set()
+                self._request_stop_event.clear()
 
         Thread(target=run_server).start()
-        log.info("Started HTTP server on port %d" % self.SERVER_PORT)
+        log.info("Started HTTP server on port %d" % self.SERVER_PORT if DEBUG_MODE else "Program started...")
         return True
 
     def exit(self):
-        if self._running:
-            self._server.shutdown()
+        if self.is_running():
+            self._server.shutdown() if self._server is not None else None
+            self._request_stop_event.set()
 
     def __del__(self):
-        self._server.server_close()
+        try:
+            self._server.server_close() if self._server is not None else None
+        except Exception as e:
+            pass
