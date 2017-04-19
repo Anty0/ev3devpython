@@ -171,7 +171,8 @@ class MotorDriver(DeviceDriver):
             raise Exception()
 
         if self._commands_handler_thread is None:
-            self._commands_handler_thread = Thread(target=self._commands_handler_loop, daemon=True)
+            self._commands_handler_thread = Thread(target=self._commands_handler_loop,
+                                                   name=self.address + 'MotorDriverThread', daemon=True)
             self._commands_handler_thread.start()
 
         while self._last_command != self._command:

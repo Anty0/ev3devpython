@@ -1,6 +1,11 @@
 import json
+import signal
+import sys
+import time
 from http.server import HTTPServer
 from threading import Thread, Event
+
+from ev3dev.auto import Button
 
 from utils.calc.range import Range
 from utils.debug_mode import DEBUG_MODE
@@ -250,10 +255,12 @@ class Program:
     def can_start(self):
         return not self.is_running()
 
-    def wait_to_exit(self):
-        self._stopped_event.wait()
+    def wait_to_exit(self, timeout=None):
+        return self._stopped_event.wait(timeout)
 
     def start(self, config: dict = None):
+        log.info('Starting program...')
+
         if not self.can_start():
             return False
 
@@ -272,8 +279,10 @@ class Program:
                 self._stopped_event.set()
                 self._request_stop_event.clear()
 
-        Thread(target=run_server).start()
-        log.info("Started HTTP server on port %d" % self.SERVER_PORT if DEBUG_MODE else "Program started...")
+        Thread(target=run_server, name='ApiHttpServerThread', daemon=True).start()
+        log.info('Program started')
+        if DEBUG_MODE:
+            log.info('API HTTP server started on port %d' % self.SERVER_PORT)
         return True
 
     def exit(self):
@@ -286,3 +295,83 @@ class Program:
             self._server.server_close() if self._server is not None else None
         except Exception as e:
             pass
+
+
+def start_program_from_args(args: list, available_programs: dict):
+    program_name_pos = args.index('--run') + 1 if '--run' in args else -1
+    program_name = args[program_name_pos] if program_name_pos != -1 and len(args) > program_name_pos else None
+    program_info = available_programs[program_name] if program_name in available_programs else None
+
+    if '--help' in args or '-h' in args:
+        def program_args_to_str(program_info):
+            program_args = program_info['additional_args'] if 'additional_args' in program_info else []
+            result = ''
+            for arg in program_args:
+                result += ' ['
+                if isinstance(arg, list):
+                    if len(arg) > 0:
+                        result += arg[0]
+                        for i in range(1, len(arg)):
+                            result += '|' + arg[i]
+                else:
+                    result += arg
+                result += ']'
+            return result
+
+        if program_info is None:
+            log.info('\n'
+                     '    Usages: Run program   - ./main.py --run program_name [--config config_file_path]\n'
+                     '            About program - ./main.py --run program_name --help|-h\n'
+                     '            This help     - ./main.py [--help|-h]\n\n'
+                     '    Available programs:\n' +
+                     '\n'.join(['        ' + name + program_args_to_str(available_programs[name])
+                                for name in available_programs.keys()]))
+        else:
+            log.info('\n'
+                     '    Help for program ' + program_name + ':\n    ' +
+                     program_info['help_text'] if 'help_text' in program_info else
+                     'Program ' + program_name + ' does not provide any help.')
+        sys.exit()
+
+    if program_info is None:
+        log.exception('Can\'t start requested program: Check program name.')
+        sys.exit(1)
+
+    program_class = program_info['class']
+    if program_class is None:
+        log.exception('Can\'t start requested program: Program is not implemented.')
+        sys.exit(1)
+
+    config_path_pos = args.index('--config') + 1 if '--config' in args else -1
+    config_path = args[config_path_pos] if config_path_pos != -1 and len(args) > config_path_pos else None
+    config = None
+    if config_path is not None:
+        try:
+            with open(config_path) as config_file:
+                config = json.load(config_file)
+        except Exception as e:
+            log.exception(e)
+            log.info('Can\'t load config form file ' + str(config_path) + '. Exiting...')
+            sys.exit()
+
+    if not DEBUG_MODE:
+        log.info('Ready to run')
+        log.info('Waiting on enter press...')
+        while not Button.enter:
+            time.sleep(0)
+        time.sleep(0.5)
+
+    program = program_class()
+    if program.start(config):
+        def handle_exit(signum, frame):
+            log.info('Caught exit request, sending exit request to program...')
+
+            program.exit()
+            if not program.wait_to_exit(15):
+                log.info('Program did not respond during 15s timeout, forcing exit...')
+                sys.exit(2)
+
+        signal.signal(signal.SIGINT, handle_exit)
+        signal.signal(signal.SIGTERM, handle_exit)
+
+        program.wait_to_exit()

@@ -15,7 +15,7 @@ class GraphPoint:
 def graph_to_string(name: str, graph_points: list, size_x: int = None, size_y: int = None,
                     range_x: Range = None, range_y: Range = None):
     if len(graph_points) < 2:
-        return 'Can\'t create string from map. (map is empty)'
+        return 'Can\'t create string from graph %s. (graph is empty)' % name
 
     if range_x is None:
         graph_x = [point.x for point in graph_points]
@@ -42,7 +42,7 @@ def graph_to_string(name: str, graph_points: list, size_x: int = None, size_y: i
         max_graph_y = range_y.val_max
 
     if min_graph_x == max_graph_x or min_graph_y == max_graph_y:
-        return 'Can\'t create string from map. (map is too small)'
+        return 'Can\'t create string from graph %s. (graph is too small - one point width or height)' % name
 
     if size_x is None:
         size_x = min(int(max_graph_x - min_graph_x) * 4, 150)

@@ -1,6 +1,6 @@
 import math
 import time
-from threading import Lock, Thread, Event
+from threading import Lock
 
 from utils.hardware.wheel import Wheel
 
@@ -68,51 +68,12 @@ class OdometryCalculator:
 
             self._last_time = current_time
             self._last_left_position = pos_left
-            self._last_right_position = pos_right
 
 
-class OdometryCalculatorThread(OdometryCalculator, Thread):
-    def __init__(self, *wheels: Wheel, sleep_time: float = 0.02):
-        Thread.__init__(self, daemon=True)
-        OdometryCalculator.__init__(self, *wheels)
-        self._sleep_time = sleep_time
-        self._run = True
-        self._event_stopped = Event()
-
-    def stop(self):
-        self._run = False
-
-    def wait_to_stop(self):
-        self._event_stopped.wait()
-
-    def run(self):
-        try:
-            while self._run:
-                self.cycle()
-                time.sleep(self._sleep_time)
-        finally:
-            self._event_stopped.set()
-
-
-class PositionsCollector(Thread):
-    def __init__(self, odometry_calculator: OdometryCalculator, sleep_time: float = 0.1):
-        super().__init__(daemon=True)
-        self._sleep_time = sleep_time
+class PositionsCollector:
+    def __init__(self, odometry_calculator: OdometryCalculator):
         self.odometry_calculator = odometry_calculator
         self.positions = []
-        self._run = True
-        self._event_stopped = Event()
 
-    def stop(self):
-        self._run = False
-
-    def wait_to_stop(self):
-        self._event_stopped.wait()
-
-    def run(self):
-        try:
-            while self._run:
-                self.positions.append(self.odometry_calculator.position)
-                time.sleep(self._sleep_time)
-        finally:
-            self._event_stopped.set()
+    def cycle(self):
+        self.positions.append(self.odometry_calculator.position)

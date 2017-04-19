@@ -3,11 +3,14 @@ import time
 # from hardware.wheels import LEFT_MOTOR, RIGHT_MOTOR
 from hardware.pilot import PILOT
 # from utils.calc.range import Range
-from utils.control.odometry import OdometryCalculatorThread, PositionsCollector
+from utils.control.odometry import PositionsCollector, OdometryCalculator
 from utils.graph import graph_to_string, GraphPoint
+from utils.threading.cycle_thread import CycleThread
 
-odometry = OdometryCalculatorThread(*PILOT.wheels)
-position_collector = PositionsCollector(odometry, 0.02)
+odometry = OdometryCalculator(*PILOT.wheels)
+odometry_thread = CycleThread(target=odometry.cycle, sleep_time=0.02, daemon=True)
+position_collector = PositionsCollector(odometry)
+position_collector_thread = CycleThread(target=position_collector.cycle, sleep_time=0.02, daemon=True)
 
 
 def print_positions():
@@ -19,9 +22,8 @@ try:
     print('Running...')
 
     PILOT.reset()
-    odometry.start()
-    position_collector.start()
-
+    odometry_thread.start()
+    position_collector_thread.start()
 
     # LEFT_MOTOR.run_to_rel_pos(position_sp=360, speed_sp=50)
     # while LEFT_MOTOR.STATE_RUNNING in LEFT_MOTOR.state:
@@ -51,8 +53,8 @@ try:
     wait_to_stop()
 finally:
     PILOT.stop()
-    odometry.stop()
-    odometry.wait_to_stop()
-    position_collector.stop()
-    position_collector.wait_to_stop()
+    odometry_thread.stop()
+    odometry_thread.wait_to_stop()
+    position_collector_thread.stop()
+    position_collector_thread.wait_to_stop()
     print_positions()

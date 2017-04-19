@@ -5,7 +5,7 @@ from .log import get_logger
 
 log = get_logger(__name__)
 
-DEBUG_CYCLE_TIME = True
+DEBUG_CYCLE_TIME = False
 
 
 def wait_to_cycle_time(cycle_name: str, last_time: float, cycle_time: float):

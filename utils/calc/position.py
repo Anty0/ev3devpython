@@ -21,7 +21,7 @@ class Position2D:
 
     @property
     def angle_rad(self):
-        raise NotImplementedError  # TODO: implement
+        return math.radians(self._angle_deg)
 
     def offset_by(self, offset_position):  # TODO: if self.angle != 0 offset x and y by rotated offset
         return Position2D(self.x + offset_position.x,
@@ -37,6 +37,9 @@ class Position2D:
         return math.sqrt((self.x - position.x) ** 2 + (self.y - position.y) ** 2)
 
         # TODO: add some basic calculations support methods
+
+    def negative(self):
+        return Position2D(-self.x, -self.y, -self.angle_deg)
 
     def generate_json_info(self):
         return {

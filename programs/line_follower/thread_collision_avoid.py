@@ -122,7 +122,7 @@ def obstacle_avoid(shared: ShareAccessInterface, config: dict, robot_info: Robot
     scanner_pos = 90 * -side
     detect = obstacle_width == 0 or obstacle_height == 0
     if detect and not scanner_distance.motor_connected:
-        log.warn('Can\'t avoid obstacle without obstacle_width and obstacle_height or without distance_sensor.')
+        log.warn('Can\'t avoid obstacle without obstacle_width and obstacle_height or distance_sensor.')
         return
 
     pilot.run_percent_drive_to_angle_deg(90, course, speed_unit=target_speed)

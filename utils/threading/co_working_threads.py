@@ -89,7 +89,8 @@ class Threads:
             running_threads = self.running_threads
             for name in self.starters.keys():
                 if name not in running_threads:
-                    running_threads[name] = thread = Thread(target=lambda: self._handle_thread_start(name), daemon=True)
+                    running_threads[name] = thread = Thread(target=lambda: self._handle_thread_start(name),
+                                                            name=name + 'Thread', daemon=True)
                     thread.start()
 
     def _handle_thread_start(self, name):

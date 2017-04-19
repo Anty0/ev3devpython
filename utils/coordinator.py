@@ -60,8 +60,8 @@ class Coordinator:
 
 
 class ThreadCoordinator(Thread, Coordinator):
-    def __init__(self, actions):
-        Thread.__init__(self)
+    def __init__(self, actions, group=None, name=None, daemon=None):
+        Thread.__init__(self, group=group, name=name, daemon=daemon)
         Coordinator.__init__(self, actions)
         self._request_stop = False
         self._stop_event = Event()

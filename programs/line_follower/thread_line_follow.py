@@ -1,10 +1,14 @@
 import math
 import time
 
+from ev3dev.auto import Button
+
 from hardware.hw_config import SCANNER_REFLECT_HEAD_POSITION, SCANNER_DISTANCE_PROPULSION_POSITION
 from utils.calc.position import Position2D
-from utils.control.odometry import OdometryCalculator
+from utils.control.odometry import OdometryCalculator, PositionsCollector
 from utils.control.pilot import Pilot
+from utils.debug_mode import DEBUG_MODE
+from utils.graph import graph_to_string, GraphPoint
 from utils.log import get_logger
 from utils.sensor.scanner import Scanner
 from utils.threading.co_working_threads import ShareAccessInterface
@@ -57,7 +61,7 @@ def perform_detailed_line_scan(shared: ShareAccessInterface, pilot: Pilot, scann
     scan_result['min_reflect'] = min_reflect
     scan_result['max_reflect'] = max_reflect
 
-    sensor_pos_distance = SCANNER_REFLECT_HEAD_POSITION.distance_to(Position2D(0, 0, 0))
+    pos_center_to_sensor_distance = Position2D(0, 0, 0).distance_to(SCANNER_REFLECT_HEAD_POSITION)
     start_position = scan_result['start_position']
     start_position_len = len(start_position)
 
@@ -69,7 +73,7 @@ def perform_detailed_line_scan(shared: ShareAccessInterface, pilot: Pilot, scann
     min_reflect_positions_change = [min_reflect_wheels_positions[i] - start_position[i]
                                     for i in range(start_position_len)]
     min_reflect_angle = pilot.positions_change_to_angle(min_reflect_positions_change)
-    min_reflect_pos = math.sin(math.radians(min_reflect_angle)) * sensor_pos_distance
+    min_reflect_pos = math.sin(math.radians(min_reflect_angle)) * pos_center_to_sensor_distance
     position_offset = min_reflect_pos
     scan_result['position_offset'] = position_offset
 
@@ -79,7 +83,7 @@ def perform_detailed_line_scan(shared: ShareAccessInterface, pilot: Pilot, scann
 
         angle = pilot.positions_change_to_angle(positions_change)
 
-        position = (math.sin(math.radians(angle)) * sensor_pos_distance) - position_offset
+        position = (math.sin(math.radians(angle)) * pos_center_to_sensor_distance) - position_offset
         # position_int = round(position * 1000)
 
         result['wheels_positions_change'] = positions_change
@@ -183,28 +187,29 @@ def perform_detailed_line_scan(shared: ShareAccessInterface, pilot: Pilot, scann
 
     scan_result['reflect_to_position_list'] = reflect_to_position_list
 
-    shared.data.add_new_graph({
-        'name': 'Reflect by angle scan',
-        'content': [{'x': result['angle'], 'y': result['reflect']} for result in scan_result['results']]
-    })
-    shared.data.add_new_graph({
-        'name': 'Reflect by position scan',
-        'content': [{'x': result['position'], 'y': result['reflect']} for result in scan_result['results']]
-    })
-    shared.data.add_new_graph({
-        'name': 'Reflect by position filtered scan',
-        'content': [{'x': result['position'], 'y': result['reflect']} for result in scan_result['filtered_results']]
-    })
-    # shared.data.add_new_graph({
-    #     'name': 'Position to reflect scan',
-    #     'content': [{'x': j, 'y': scan_result['position_to_reflect_list'][j]}
-    #                 for j in range(scan_result['min_position_int'], scan_result['max_position_int'])]
-    # })
-    shared.data.add_new_graph({
-        'name': 'Reflect to position scan',
-        'content': [{'x': j, 'y': scan_result['reflect_to_position_list'][j]}
-                    for j in range(len(scan_result['reflect_to_position_list']))]
-    })
+    if DEBUG_MODE:
+        shared.data.add_new_graph({
+            'name': 'Reflect by angle scan',
+            'content': [{'x': result['angle'], 'y': result['reflect']} for result in scan_result['results']]
+        })
+        shared.data.add_new_graph({
+            'name': 'Reflect by position scan',
+            'content': [{'x': result['position'], 'y': result['reflect']} for result in scan_result['results']]
+        })
+        shared.data.add_new_graph({
+            'name': 'Reflect by position filtered scan',
+            'content': [{'x': result['position'], 'y': result['reflect']} for result in scan_result['filtered_results']]
+        })
+        # shared.data.add_new_graph({
+        #     'name': 'Position to reflect scan',
+        #     'content': [{'x': j, 'y': scan_result['position_to_reflect_list'][j]}
+        #                 for j in range(scan_result['min_position_int'], scan_result['max_position_int'])]
+        # })
+        shared.data.add_new_graph({
+            'name': 'Reflect to position scan',
+            'content': [{'x': j, 'y': scan_result['reflect_to_position_list'][j]}
+                        for j in range(len(scan_result['reflect_to_position_list']))]
+        })
     return {
         'max_position': scan_result['max_position'],
         # 'max_position_int': scan_result['max_position_int'],
@@ -224,16 +229,7 @@ def run_loop(shared: ShareAccessInterface):
     config = runtime_config.extract_config_values(
         'TARGET_POWER', 'TARGET_POSITION', 'LINE_SIDE', 'TARGET_CYCLE_TIME'
     )
-    # config = runtime_config.extract_config_values(
-    #     'REG_STEER_P', 'REG_STEER_I', 'REG_STEER_D',
-    #     'TARGET_POWER', 'TARGET_REFLECT', 'LINE_SIDE', 'TARGET_CYCLE_TIME'
-    # )
-    # detect_reflect = runtime_config.get_config_value('DETECT_REFLECT')
-    # min_reflect = runtime_config.get_config_value('MIN_REFLECT')
-    # max_reflect = runtime_config.get_config_value('MAX_REFLECT')
-    # min_to_max_distance = runtime_config.get_config_value('MIN_TO_MAX_DISTANCE')
 
-    # if detect_reflect:
     line_info = shared.data.line_info
     target_position = 0
 
@@ -242,74 +238,112 @@ def run_loop(shared: ShareAccessInterface):
         target_position = config['TARGET_POSITION'] / 100 * line_info['max_position']
 
     def perform_line_scan():
+        log.info('Starting line scan...')
         global line_info
         shared.data.perform_line_scan = False
         line_info = perform_detailed_line_scan(shared, pilot, scanner_reflect)
         shared.data.line_info = line_info
         update_target_position()
 
-        sensor_pos_distance = SCANNER_REFLECT_HEAD_POSITION.distance_to(Position2D(0, 0, 0))
-        angle_fix = math.degrees(math.asin((line_info['position_offset'] - target_position) / sensor_pos_distance))
+        log.info('Fixing robot position...')
+        pos_center_to_sensor_distance = Position2D(0, 0, 0).distance_to(SCANNER_REFLECT_HEAD_POSITION)
+        angle_fix = math.degrees(math.asin(
+            (line_info['position_offset'] - target_position) / pos_center_to_sensor_distance
+        ))
         if angle_fix != 0:
             pilot.run_percent_drive_to_angle_deg(abs(angle_fix), 200 + (angle_fix / abs(angle_fix)), speed_mul=0.05)
 
     perform_line_scan()
 
-    # regulator_steer = RangeRegulator(getter_p=lambda: config['REG_STEER_P'],
-    #                                  getter_i=lambda: config['REG_STEER_I'],
-    #                                  getter_d=lambda: config['REG_STEER_D'],
-    #                                  getter_target=lambda: config['TARGET_REFLECT'])
-    #
-    # regulator_sensor = None  # TODO: create, rework and and test
-
     odometry = OdometryCalculator(*pilot.wheels)
+    robot_positions_collector = PositionsCollector(odometry) if DEBUG_MODE else None
+    line_positions = []
 
-    sensor_head_pos_distance = SCANNER_REFLECT_HEAD_POSITION.distance_to(SCANNER_DISTANCE_PROPULSION_POSITION)
+    pos_center_to_propulsion_angle_rad = SCANNER_DISTANCE_PROPULSION_POSITION.angle_rad
+    pos_center_to_propulsion_distance = Position2D(0, 0, 0).distance_to(SCANNER_DISTANCE_PROPULSION_POSITION)
+
+    pos_propulsion_to_sensor_angle_rad = \
+        SCANNER_REFLECT_HEAD_POSITION.angle_rad - SCANNER_DISTANCE_PROPULSION_POSITION.angle_rad
+    pos_propulsion_to_sensor_distance = SCANNER_DISTANCE_PROPULSION_POSITION.distance_to(SCANNER_REFLECT_HEAD_POSITION)
+
+    pos_sensor_to_line_angle_rad = math.radians(-90)
     try:
+        if not DEBUG_MODE:
+            log.info('Line follower is ready')
+            log.info('Waiting on enter press...')
+            while not Button.enter:
+                time.sleep(0)
+            time.sleep(0.2)
+
         pilot.run_direct()
-        # last_time = time.time()
         while shared.should_run():
             if runtime_config.update_extracted_config(config):
                 update_target_position()
-                # regulator_steer.reset()
 
             odometry.cycle()
+            if DEBUG_MODE:
+                robot_positions_collector.cycle()
+            val_reflect = scanner_reflect.value(percent=False)
+            pos_scanner_angle_deg = scanner_reflect.angle_deg()
+            pos_scanner_angle_rad = math.radians(pos_scanner_angle_deg)
 
-            read_val = scanner_reflect.value(percent=False)
-            line_distance = line_info['reflect_to_position_list'][read_val]
-            target_pos_distance = line_distance - line_info['max_position'] / 100 * config['TARGET_POSITION']
-            angle_to_line = math.degrees(math.asin(target_pos_distance / sensor_head_pos_distance))
+            pos_line_side = config['LINE_SIDE']
+            pos_line_center_distance = line_info['reflect_to_position_list'][val_reflect]
+            pos_line_target_distance = pos_line_center_distance - target_position
+
+            if DEBUG_MODE:
+                pos_robot = odometry.position
+
+                pos_propulsion_angle_rad = pos_robot[2] + pos_center_to_propulsion_angle_rad
+                pos_propulsion_x = pos_robot[0] + math.cos(pos_propulsion_angle_rad) * pos_center_to_propulsion_distance
+                pos_propulsion_y = pos_robot[1] + math.sin(pos_propulsion_angle_rad) * pos_center_to_propulsion_distance
+
+                pos_sensor_angle_rad = \
+                    pos_propulsion_angle_rad + pos_propulsion_to_sensor_angle_rad + pos_scanner_angle_rad
+                pos_sensor_x = pos_propulsion_x + math.cos(pos_sensor_angle_rad) * pos_propulsion_to_sensor_distance
+                pos_sensor_y = pos_propulsion_y + math.sin(pos_sensor_angle_rad) * pos_propulsion_to_sensor_distance
+
+                pos_line_target_angle = pos_sensor_angle_rad + pos_sensor_to_line_angle_rad * pos_line_side
+                pos_line_target_x = pos_sensor_x + math.cos(pos_line_target_angle) * pos_line_target_distance
+                pos_line_target_y = pos_sensor_y + math.sin(pos_line_target_angle) * pos_line_target_distance
+
+                line_positions.append([pos_line_target_x, pos_line_target_y])
+
+            angle_to_line = math.degrees(
+                math.asin(pos_line_target_distance / pos_propulsion_to_sensor_distance) * pos_line_side
+            )
             scanner_reflect.rotate_to_rel_pos(angle_to_line)
-            # TODO: complete implementation
 
-            # read_val = scanner_reflect.value(percent=False)
-            # read_percent = 100 * (read_val - min_reflect) / (max_reflect - min_reflect)
-            # course = crop_r(regulator_steer.regulate(read_percent) * config['LINE_SIDE'])
-            #
-            # if shared.data.pause:
-            #     pilot.update_duty_cycle(course, target_duty_cycle=0, mul_duty_cycle=config['TARGET_POWER'] / 100)
-            # else:
-            #     pilot.update_duty_cycle(course, mul_duty_cycle=config['TARGET_POWER'] / 100)
+            ch_x = math.sin(pos_scanner_angle_rad) * pos_propulsion_to_sensor_distance
+            ch_y = pos_center_to_propulsion_distance + (
+                math.cos(pos_scanner_angle_rad) * pos_propulsion_to_sensor_distance
+            )
+            course_r = (ch_x ** 2 + ch_y ** 2) / (
+            2 * ch_x) if ch_x != 0 else None  # None course_r causes strait a head drive
+
+            if shared.data.pause:
+                pilot.update_duty_cycle_unit(course_r, target_duty_cycle=0, max_duty_cycle=config['TARGET_POWER'])
+                # pilot.update_duty_cycle(course, target_duty_cycle=0, mul_duty_cycle=config['TARGET_POWER'] / 100)
+            else:
+                pilot.update_duty_cycle_unit(course_r, max_duty_cycle=config['TARGET_POWER'])
+                # pilot.update_duty_cycle(course, mul_duty_cycle=config['TARGET_POWER'] / 100)
 
             if shared.data.perform_line_scan:
                 pilot.stop()
-
                 time.sleep(5)
                 perform_line_scan()
-
-                # regulator_steer.reset()
                 pilot.run_direct()
-                # last_time = time.time()
 
             if shared.should_pause():
                 pilot.stop()
-
                 shared.wait_resume()
-
-                # regulator_steer.reset()
                 pilot.run_direct()
-                # last_time = time.time()
-                #
-                # last_time = wait_to_cycle_time('line_follow', last_time, config['TARGET_CYCLE_TIME'])
     finally:
         pilot.stop()
+        if DEBUG_MODE:
+            print(graph_to_string('Robot positions', [
+                GraphPoint(point[0], point[1]) for point in robot_positions_collector.positions
+            ]))
+            print(graph_to_string('Line positions', [
+                GraphPoint(point[0], point[1]) for point in line_positions
+            ]))

@@ -6,7 +6,7 @@ from ev3dev.auto import Sensor
 
 class ValueReader(Thread):
     def __init__(self, sensor: Sensor):
-        super().__init__(daemon=True)
+        super().__init__(name=sensor.address + 'SensorValueReaderThread', daemon=True)
         self._change_event = Event()
         self._paused_event = Event()
         self._run = True
