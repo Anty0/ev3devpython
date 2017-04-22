@@ -1,6 +1,6 @@
 from utils.simulation.interface import EV3LargeMotorInterface, EV3MediumMotorInterface, \
     EV3ColorSensorInterface, EV3InfraredSensorInterface
-from utils.simulation.simulator import get_base_ev3_devices
+from utils.simulation.simulator import create_base_ev3_devices_interfaces
 from .hw_config import WHEEL_MOTOR_LEFT_PORT, WHEEL_MOTOR_LEFT_POSITION, \
     WHEEL_MOTOR_RIGHT_PORT, WHEEL_MOTOR_RIGHT_POSITION, \
     SCANNER_DISTANCE_PROPULSION_PORT, SCANNER_DISTANCE_PROPULSION_POSITION, \
@@ -18,4 +18,4 @@ DEVICES_INTERFACES = [
                                                  SCANNER_REFLECT_PROPULSION_PORT),
                          EV3InfraredSensorInterface(SCANNER_DISTANCE_HEAD_POSITION, SCANNER_DISTANCE_HEAD_PORT),
                          EV3ColorSensorInterface(SCANNER_REFLECT_HEAD_POSITION, SCANNER_REFLECT_HEAD_PORT)
-                     ] + get_base_ev3_devices(BRICK_POSITION)
+                     ] + create_base_ev3_devices_interfaces(BRICK_POSITION)

@@ -23,23 +23,52 @@ class Position2D:
     def angle_rad(self):
         return math.radians(self._angle_deg)
 
-    def offset_by(self, offset_position):  # TODO: if self.angle != 0 offset x and y by rotated offset
-        return Position2D(self.x + offset_position.x,
-                          self.y + offset_position.y,
-                          self.angle_deg + offset_position.angle_deg)
-
-    def offset_by_raw(self, x: float, y: float, angle_deg: float):
-        # TODO: if self.angle != 0 offset x and y by rotated offset
+    def __add__(self, other):
+        if isinstance(other, Position2D):
+            x = other.x,
+            y = other.y,
+            angle_deg = other.angle_deg
+        elif isinstance(other, list) and len(other) == 3:
+            x = other[0]
+            y = other[1]
+            angle_deg = other[2]
+        else:
+            raise Exception('Can\'t add unknown object to Position2D.')
         return Position2D(self.x + x, self.y + y,
                           self.angle_deg + angle_deg)
+
+    def __neg__(self):
+        return self.negative()
+
+    def move_by(self, position):
+        if self.angle_deg == 0:
+            return Position2D(self.x + position.x, self.y + position.y, self.angle_deg)
+        else:
+            rot_angle_rad = self.angle_rad
+            rot_angle_rad_cos = math.cos(rot_angle_rad)
+            rot_angle_rad_sin = math.sin(rot_angle_rad)
+            return Position2D(self.x + (position.x * rot_angle_rad_cos - position.y * rot_angle_rad_sin),
+                              self.y + (position.y * rot_angle_rad_cos + position.x * rot_angle_rad_sin),
+                              self.angle_deg)
+
+    def rotate_by(self, angle_deg: float):
+        if angle_deg == 0:
+            return Position2D(self.x, self.y, self.angle_deg)
+        else:
+            rot_angle_rad = self.angle_rad
+            rot_angle_rad_cos = math.cos(rot_angle_rad)
+            rot_angle_rad_sin = math.sin(rot_angle_rad)
+            return Position2D(self.x * rot_angle_rad_cos - self.y * rot_angle_rad_sin,
+                              self.y * rot_angle_rad_cos + self.x * rot_angle_rad_sin,
+                              self.angle_deg + angle_deg)
 
     def distance_to(self, position):
         return math.sqrt((self.x - position.x) ** 2 + (self.y - position.y) ** 2)
 
-        # TODO: add some basic calculations support methods
-
     def negative(self):
         return Position2D(-self.x, -self.y, -self.angle_deg)
+
+        # TODO: add some support methods
 
     def generate_json_info(self):
         return {

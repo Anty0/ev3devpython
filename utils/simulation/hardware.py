@@ -28,7 +28,7 @@ class SimAttribute:
 
 
 def list_sim_device_names(sim_environment, class_name, name_pattern, **kwargs):
-    environment = sim_environment.get_environment()
+    environment = sim_environment.environment
     if class_name not in environment:
         return
 
@@ -62,7 +62,7 @@ class SimDevice(Device):
             else:
                 return None
 
-        environment = sim_environment.get_environment()
+        environment = sim_environment.environment
         if name_exact:
             self._path = '/' + class_name + '/' + name_pattern
             self._device = environment[class_name][name_pattern]

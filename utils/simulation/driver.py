@@ -14,6 +14,7 @@ from .world import World
 
 class DeviceDriver:
     def __init__(self, world: World, device_interface: DeviceInterface):
+        self.interface = device_interface
         self._world = world
         self._driver_name = device_interface.driver_name
         self._position = device_interface.position
@@ -424,7 +425,7 @@ class TouchSensorDriver(SensorDriver):
     @property
     def value0(self):
         if self._mode == TouchSensor.MODE_TOUCH:
-            return str(int(self._world.is_pos_in_wall(self._position)))
+            return str(int(self._world.pos_in_wall(self._position)))
         raise Exception()
 
 
@@ -459,15 +460,15 @@ class ColorSensorDriver(SensorDriver):
     @property
     def value0(self):
         if self._mode == ColorSensor.MODE_COL_REFLECT:
-            return str(int(self._world.get_reflect_on_pos(self._position)))
+            return str(int(self._world.reflect_on_pos(self._position)))
         if self._mode == ColorSensor.MODE_COL_AMBIENT:
-            return str(int(self._world.get_light_on_pos(self._position)))
+            return str(int(self._world.light_on_pos(self._position)))
         if self._mode == ColorSensor.MODE_COL_COLOR:
             return str(int(0))  # TODO: implement
         if self._mode == ColorSensor.MODE_REF_RAW:
             return str(int(0))  # TODO: implement
         if self._mode == ColorSensor.MODE_RGB_RAW:
-            return str(int(self._world.get_color_rgb_on_pos(self._position)[0]))
+            return str(int(self._world.color_rgb_on_pos(self._position)[0]))
         raise Exception()
 
     @property
@@ -475,13 +476,13 @@ class ColorSensorDriver(SensorDriver):
         if self._mode == ColorSensor.MODE_REF_RAW:
             return str(int(0))  # TODO: implement
         if self._mode == ColorSensor.MODE_RGB_RAW:
-            return str(int(self._world.get_color_rgb_on_pos(self._position)[1]))
+            return str(int(self._world.color_rgb_on_pos(self._position)[1]))
         raise Exception()
 
     @property
     def value2(self):
         if self._mode == ColorSensor.MODE_RGB_RAW:
-            return str(int(self._world.get_color_rgb_on_pos(self._position)[2]))
+            return str(int(self._world.color_rgb_on_pos(self._position)[2]))
         raise Exception()
 
 
@@ -518,7 +519,7 @@ class UltrasonicSensorDriver(SensorDriver):
 
     def _on_mode_change(self, old_mode, new_mode):
         if new_mode == UltrasonicSensor.MODE_US_SI_CM or new_mode == UltrasonicSensor.MODE_US_SI_IN:
-            self._tmp_value = self._world.get_distance_on_pos(self._position)
+            self._tmp_value = self._world.distance_from_wall_on_pos(self._position)
         else:
             self._tmp_value = 0
 
@@ -526,14 +527,13 @@ class UltrasonicSensorDriver(SensorDriver):
     def value0(self):  # TODO: crop distance values
         ev3 = self._driver_name == 'lego-ev3-us'
         if self._mode == UltrasonicSensor.MODE_US_DIST_CM:
-            distance = self._world.get_distance_on_pos(self._position)
-            return str(int((distance * (10 if ev3 else 1)) if math.isfinite(distance) and
-                                                              distance < (2550 if ev3 else 255) else (
+            distance = self._world.distance_from_wall_on_pos(self._position)
+            return str(int((distance * (10 if ev3 else 1)) if math.isfinite(distance) and distance <= 255 else (
                 2550 if ev3 else 255)))  # map must be in cm
         if self._mode == UltrasonicSensor.MODE_US_DIST_IN:
-            distance = self._world.get_distance_on_pos(self._position)
-            return str(int((distance * 10) if math.isfinite(distance) and
-                                              distance < 1003 else 1003))  # map must be in inch
+            distance = self._world.distance_from_wall_on_pos(self._position)
+            return str(int((distance * 10) if math.isfinite(distance) and distance < 1003 else 1003))
+            # map must be in inch
         if self._mode == UltrasonicSensor.MODE_US_LISTEN:
             return str(int(0))  # TODO: add support
         if self._mode == UltrasonicSensor.MODE_US_SI_CM:
@@ -577,12 +577,12 @@ class GyroSensorDriver(SensorDriver):
         self._on_mode_change(None, self._mode)
 
     def _on_mode_change(self, old_mode, new_mode):
-        self._start_angle = self._world.get_actual_pos().get_angle_deg()
+        self._start_angle = self._world.position.angle_deg
 
     @property
     def value0(self):
         if self._mode == GyroSensor.MODE_GYRO_ANG or self._mode == GyroSensor.MODE_GYRO_G_A:
-            return str(self._world.get_actual_pos().get_angle_deg() - self._start_angle)
+            return str(self._world.position.angle_deg - self._start_angle)
         if self._mode == GyroSensor.MODE_GYRO_RATE:
             return str(0)  # TODO: add support
         if self._mode == GyroSensor.MODE_GYRO_FAS:
@@ -643,7 +643,7 @@ class InfraredSensorDriver(SensorDriver):
     @property
     def value0(self):  # TODO: crop distance values
         if self._mode == InfraredSensor.MODE_IR_PROX:
-            distance = self._world.get_distance_on_pos(self._position)
+            distance = self._world.distance_from_wall_on_pos(self._position)
             return str(int((distance / 70 * 100) if math.isfinite(distance) and distance < 70 else 100))
         if self._mode == InfraredSensor.MODE_IR_SEEK:
             return str(0)  # TODO: add support
@@ -754,9 +754,9 @@ class LightSensorDriver(SensorDriver):
     @property
     def value0(self):
         if self._mode == LightSensor.MODE_REFLECT:
-            return str(int(self._world.get_reflect_on_pos(self._position) * 10))
+            return str(int(self._world.reflect_on_pos(self._position) * 10))
         if self._mode == LightSensor.MODE_AMBIENT:
-            return str(int(self._world.get_light_on_pos(self._position) * 10))
+            return str(int(self._world.light_on_pos(self._position) * 10))
         raise Exception()
 
 

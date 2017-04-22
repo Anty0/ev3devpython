@@ -2,10 +2,12 @@ from ev3dev.auto import Motor, Sensor, Led, TouchSensor, ColorSensor, Ultrasonic
     SoundSensor, LightSensor
 
 from utils.calc.position import Position2D
+from utils.simulation.world_effect import WorldEffect
 
 
 class DeviceInterface:
-    def __init__(self, position):
+    def __init__(self, position: Position2D, *world_effects: WorldEffect):
+        self.world_effects = world_effects
         self.position = position
         self.class_name = 'unknown'
         self.driver_name = 'unknown'
@@ -16,8 +18,8 @@ class DeviceInterface:
 
 
 class MotorInterface(DeviceInterface):
-    def __init__(self, position: Position2D):
-        DeviceInterface.__init__(self, position)
+    def __init__(self, position: Position2D, *world_effects: WorldEffect):
+        DeviceInterface.__init__(self, position, *world_effects)
         self.class_name = Motor.SYSTEM_CLASS_NAME
         self.name = 'motor'
         self.address = 'unknown'
@@ -36,8 +38,8 @@ class MotorInterface(DeviceInterface):
 
 
 class EV3LargeMotorInterface(MotorInterface):
-    def __init__(self, position: Position2D, address):
-        MotorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        MotorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.commands = ['run-forever', 'run-to-abs-pos', 'run-to-rel-pos', 'run-timed', 'run-direct', 'stop', 'reset']
         self.count_per_rot = 360
@@ -48,8 +50,8 @@ class EV3LargeMotorInterface(MotorInterface):
 
 
 class NXTLargeMotor(MotorInterface):
-    def __init__(self, position: Position2D, address):
-        MotorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        MotorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.commands = ['run-forever', 'run-to-abs-pos', 'run-to-rel-pos', 'run-timed', 'run-direct', 'stop', 'reset']
         self.count_per_rot = 360
@@ -60,8 +62,8 @@ class NXTLargeMotor(MotorInterface):
 
 
 class EV3MediumMotorInterface(MotorInterface):
-    def __init__(self, position: Position2D, address):
-        MotorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        MotorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.commands = ['run-forever', 'run-to-abs-pos', 'run-to-rel-pos', 'run-timed', 'run-direct', 'stop', 'reset']
         self.count_per_rot = 360
@@ -88,8 +90,8 @@ class ServoMotorInterface(DeviceInterface):  # placeholder
 
 
 class SensorInterface(DeviceInterface):
-    def __init__(self, position):
-        DeviceInterface.__init__(self, position)
+    def __init__(self, position, *world_effects: WorldEffect):
+        DeviceInterface.__init__(self, position, *world_effects)
         self.class_name = Sensor.SYSTEM_CLASS_NAME
         self.address = 'unknown'
         self.driver_name = 'unknown'
@@ -98,111 +100,111 @@ class SensorInterface(DeviceInterface):
 
 
 class TouchSensorInterface(SensorInterface):
-    def __init__(self, position: Position2D, address):
-        SensorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        SensorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.mode = TouchSensor.MODE_TOUCH
 
 
 class EV3TouchSensorInterface(TouchSensorInterface):
-    def __init__(self, position: Position2D, address):
-        TouchSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        TouchSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-ev3-touch'
 
 
 class NXTTouchSensorInterface(TouchSensorInterface):
-    def __init__(self, position: Position2D, address):
-        TouchSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        TouchSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-nxt-touch'
 
 
 class ColorSensorInterface(SensorInterface):
-    def __init__(self, position: Position2D, address):
-        SensorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        SensorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.mode = ColorSensor.MODE_COL_REFLECT
 
 
 class EV3ColorSensorInterface(ColorSensorInterface):
-    def __init__(self, position: Position2D, address):
-        ColorSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        ColorSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-ev3-color'
 
 
 class UltrasonicSensorInterface(SensorInterface):
-    def __init__(self, position: Position2D, address):
-        SensorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        SensorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.mode = UltrasonicSensor.MODE_US_DIST_CM
 
 
 class EV3UltrasonicSensorInterface(UltrasonicSensorInterface):
-    def __init__(self, position: Position2D, address):
-        UltrasonicSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        UltrasonicSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-ev3-us'
 
 
 class NXTUltrasonicSensorInterface(UltrasonicSensorInterface):
-    def __init__(self, position: Position2D, address):
-        UltrasonicSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        UltrasonicSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-nxt-us'
 
 
 class GyroSensorInterface(SensorInterface):
-    def __init__(self, position: Position2D, address):
-        SensorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        SensorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.mode = GyroSensor.MODE_GYRO_ANG
 
 
 class EV3GyroSensorInterface(GyroSensorInterface):
-    def __init__(self, position: Position2D, address):
-        GyroSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        GyroSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-ev3-gyro'
 
 
 class InfraredSensorInterface(SensorInterface):
-    def __init__(self, position: Position2D, address):
-        SensorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        SensorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.mode = InfraredSensor.MODE_IR_PROX
 
 
 class EV3InfraredSensorInterface(InfraredSensorInterface):
-    def __init__(self, position: Position2D, address):
-        InfraredSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        InfraredSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-ev3-ir'
 
 
 class SoundSensorInterface(SensorInterface):
-    def __init__(self, position: Position2D, address):
-        SensorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        SensorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.mode = SoundSensor.MODE_DB
 
 
 class NXTSoundSensorInterface(SoundSensorInterface):
-    def __init__(self, position: Position2D, address):
-        SoundSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        SoundSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-nxt-sound'
 
 
 class LightSensorInterface(SensorInterface):
-    def __init__(self, position: Position2D, address):
-        SensorInterface.__init__(self, position)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        SensorInterface.__init__(self, position, *world_effects)
         self.address = address
         self.mode = LightSensor.MODE_REFLECT
 
 
 class NXTLightSensorInterface(LightSensorInterface):
-    def __init__(self, position: Position2D, address):
-        LightSensorInterface.__init__(self, position, address)
+    def __init__(self, position: Position2D, address: str, *world_effects: WorldEffect):
+        LightSensorInterface.__init__(self, position, address, *world_effects)
         self.driver_name = 'lego-nxt-light'
 
 
 class LedInterface(DeviceInterface):
-    def __init__(self, position: Position2D, name):
-        DeviceInterface.__init__(self, position)
+    def __init__(self, position: Position2D, name: str, *world_effects: WorldEffect):
+        DeviceInterface.__init__(self, position, *world_effects)
         self.class_name = Led.SYSTEM_CLASS_NAME
         self.driver_name = 'unknown'
         self.name = name
@@ -214,8 +216,8 @@ class LedInterface(DeviceInterface):
 
 
 class EV3LedInterface(LedInterface):
-    def __init__(self, position: Position2D, name):
-        LedInterface.__init__(self, position, name)
+    def __init__(self, position: Position2D, name: str, *world_effects: WorldEffect):
+        LedInterface.__init__(self, position, name, *world_effects)
         self.driver_name = 'leds-pwm'
         self.max_brightness = 255
         self.brightness = 0
