@@ -1,9 +1,12 @@
 import math
 
 import numpy as np
-
 from utils.calc.position import Position2D
 from utils.hardware.robot import Robot
+
+from utils.control.odometry import OdometryWheel, OdometryCalculator
+from utils.simulation.world_effect import WheelEffect
+from utils.threading.cycle_thread import CycleThread
 from utils.utils import crop_m, list_line_points, list_circle_points
 
 
@@ -25,19 +28,21 @@ class WorldMap:
     def __init__(self, width: int, height: int):
         self.contents = np.empty([width, height], dtype=np.byte)
         self.shape = self.contents.shape
+        self.width = self.shape[0]
+        self.height = self.shape[1]
 
     def get(self, x, y):
-        if x < 0 or y < 0 or x >= self.shape[0] or y >= self.shape[1]:
+        if x < 0 or y < 0 or x >= self.width or y >= self.height:
             return 0
         return self.contents[x][y]
 
     def set(self, x, y, flag):
-        if x < 0 or y < 0 or x >= self.shape[0] or y >= self.shape[1]:
+        if x < 0 or y < 0 or x >= self.width or y >= self.height:
             pass
         self.contents[x][y] = self.contents[x][y] | flag
 
     def clear(self, x, y, clear_flag):
-        if x < 0 or y < 0 or x >= self.shape[0] or y >= self.shape[1]:
+        if x < 0 or y < 0 or x >= self.width or y >= self.height:
             pass
         self.contents[x][y] = self.contents[x][y] & clear_flag
 
@@ -75,9 +80,18 @@ class World:
         self._map = world_map
         self._position = Position2D(0, 0, 0)
 
+        self._bind_done = False
+        self._effects = []
+        self._odometry = None
+        self._odometry_thread = None
+
     @property
     def robot(self):
         return self._robot
+
+    @property
+    def world_map(self):
+        return self._map
 
     @property
     def position(self) -> Position2D:
@@ -85,21 +99,42 @@ class World:
 
     @position.setter
     def position(self, position: Position2D):
+        if self._odometry is not None:
+            self._odometry.position = [position.x, position.y, position.angle_rad]
         self._position = position
 
     @property
-    def world_map(self):
-        return self._map
+    def effects(self):
+        return self.effects
 
     def bind_simulated_environment(self, simulated_environment):
-        pass  # TODO: extract hardware with world effects
+        if self._bind_done:
+            raise Exception()
+        self._bind_done = True
 
-    # def _start_odometry(self):
-    #     if self._odometry_thread is None:
-    #         if self._odometry is None:
-    #             raise Exception('Can\'t start odometry, odometry calculator is not prepared.')
-    #         self._odometry_thread = CycleThread(target=self._odometry.cycle, name='OdometryThread', daemon=True)
-    #         self._odometry_thread.start()
+        wheels = []
+        for driver in simulated_environment.drivers:
+            for world_effect in driver.interface.world_effects:
+                self._effects.append([world_effect, driver])
+                if isinstance(world_effect, WheelEffect):
+                    wheels.append(OdometryWheel(world_effect.wheel_info, lambda: int(driver.position)))
+
+        if len(wheels) > 0:
+            self._start_odometry(*wheels)
+
+    def _start_odometry(self, *wheels: OdometryWheel):
+        if self._odometry_thread is not None or self._odometry is not None:
+            raise Exception('Odometry is still running.')
+        self._odometry = OdometryCalculator(*wheels)
+
+        def odometry_cycle():
+            self._odometry.cycle()
+            odometry_pos = self._odometry.position
+            self._position = Position2D(odometry_pos[0], odometry_pos[1], math.degrees(odometry_pos[2]))
+
+        self._odometry_thread = CycleThread(target=odometry_cycle, sleep_time=0.02,
+                                            name='OdometryThread', daemon=True)
+        self._odometry_thread.start()
 
     def _offset_pos(self, offset: Position2D):
         if offset is None:
@@ -112,7 +147,9 @@ class World:
                         [math.ceil, math.floor], [math.ceil, math.ceil]]:
             pos = [methods[0](position.x), methods[1](position.y)]
             distance = math.sqrt((position.x - pos[0]) ** 2 + (position.y - pos[1]) ** 2)
-            result.append([pos, distance])
+            place = [pos, distance]
+            if place not in result:
+                result.append(place)
         return result
 
     def color_rgb_on_pos(self, offset: Position2D = None) -> list:

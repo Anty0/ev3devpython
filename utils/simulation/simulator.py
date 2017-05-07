@@ -1,4 +1,5 @@
 from utils.calc.position import Position2D
+
 from utils.simulation.interface import DeviceInterface
 from utils.simulation.world import World
 from . import driver, interface
@@ -6,7 +7,12 @@ from . import driver, interface
 
 class SimulatedEnvironment:
     def __init__(self):
+        self._drivers = []
         self._environment = {}
+
+    @property
+    def drivers(self):
+        return self._drivers
 
     @property
     def environment(self):
@@ -23,6 +29,7 @@ class SimulatedEnvironment:
             index += 1
 
         self._environment[class_name][name + str(index)] = device
+        self._drivers.append(device)
 
     def create_device(self, world: World, device_interface: DeviceInterface):
         device = driver.DRIVERS[device_interface.driver_name](world, device_interface)

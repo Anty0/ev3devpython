@@ -819,6 +819,7 @@ class LedDriver(DeviceDriver):
 DRIVERS = {
     'unknown': DeviceDriver,
 
+    'lego-motor': MotorDriver,
     'lego-ev3-l-motor': MotorDriver,
     'lego-nxt-motor': MotorDriver,
     'lego-ev3-m-motor': MotorDriver,
