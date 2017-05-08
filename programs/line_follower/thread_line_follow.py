@@ -48,7 +48,7 @@ def perform_detailed_line_scan(shared: ShareAccessInterface, pilot: Pilot, scann
 
     scan_result = perform_simple_scan(pilot, scanner_reflect)
 
-    if len(scan_result) == 0:
+    if len(scan_result['results']) == 0:
         return None
 
     min_reflect = 100
@@ -240,7 +240,11 @@ def run_loop(shared: ShareAccessInterface):
         log.info('Starting line scan...')
         global line_info
         shared.data.perform_line_scan = False
-        line_info = perform_detailed_line_scan(shared, pilot, scanner_reflect)
+        scan_result = perform_detailed_line_scan(shared, pilot, scanner_reflect)
+        if scan_result is None:
+            return False
+
+        line_info = scan_result
         shared.data.line_info = line_info
         update_target_position()
 
@@ -251,8 +255,11 @@ def run_loop(shared: ShareAccessInterface):
         ))
         if angle_fix != 0:
             pilot.run_percent_drive_to_angle_deg(abs(angle_fix), 200 + (angle_fix / abs(angle_fix)), speed_mul=0.05)
+        return True
 
-    perform_line_scan()
+    if not perform_line_scan():
+        log.info('Line scan failed, exiting loop...')  # TODO: create default line info
+        return
 
     odometry = odometry_from_wheels(*pilot.wheels)
     robot_positions_collector = PositionsCollector(odometry) if DEBUG_MODE else None
@@ -332,7 +339,8 @@ def run_loop(shared: ShareAccessInterface):
             if shared.data.perform_line_scan:
                 pilot.stop()
                 time.sleep(5)
-                perform_line_scan()
+                if not perform_line_scan():
+                    log.info('Line scan failed, old result will be used.')
                 pilot.run_direct()
 
             if shared.should_pause():
