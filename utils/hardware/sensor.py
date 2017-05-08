@@ -54,14 +54,14 @@ class SensorHeadDistanceMode(SensorHeadMode):
             ir_sensor = InfraredSensor()
             ultrasonic_sensor = UltrasonicSensor()
 
-        if ultrasonic_sensor.connected:
+        if ultrasonic_sensor is not None and ultrasonic_sensor.connected:
             mode_name = UltrasonicSensor.MODE_US_DIST_CM
             sensor = ultrasonic_sensor
             to_unit_mul = 1 if ultrasonic_sensor.driver_name is not 'lego-ev3-us' else 0.1
             min_value = 0
             max_value = 255 if ultrasonic_sensor.driver_name is not 'lego-ev3-us' else 2550
             max_value *= to_unit_mul
-        elif ir_sensor.connected:
+        elif ir_sensor is not None and ir_sensor.connected:
             mode_name = InfraredSensor.MODE_IR_PROX
             sensor = ir_sensor
             to_unit_mul = 0.7

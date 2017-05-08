@@ -6,22 +6,17 @@ from utils.hardware.wheel import Wheel
 
 
 class OdometryCalculator:
-    def __init__(self, *wheels: Wheel):
-        left_wheel = min(wheels, key=lambda wheel: wheel.offset, default=None)
-        right_wheel = max(wheels, key=lambda wheel: wheel.offset, default=None)
-        if left_wheel is None or right_wheel is None or left_wheel.offset == right_wheel.offset:
-            raise Exception('Invalid wheels input. Required two wheels with different offset at last.')
-
-        self._left_motor = left_wheel.motor
-        self._right_motor = right_wheel.motor
-        self._distance_between_wheels = right_wheel.offset - left_wheel.offset
-        self._left_motor_distance_per_tacho_count = (left_wheel.total_ratio * left_wheel.unit_ratio) ** -1
-        self._right_motor_distance_per_tacho_count = (right_wheel.total_ratio * right_wheel.unit_ratio) ** -1
+    def __init__(self, left_wheel_traveled_distance_getter: callable,
+                 right_wheel_traveled_distance_getter: callable,
+                 distance_between_wheels: float):
+        self._left_traveled_getter = left_wheel_traveled_distance_getter
+        self._right_traveled_getter = right_wheel_traveled_distance_getter
+        self._distance_between_wheels = distance_between_wheels
 
         self._lock = Lock()
         self._last_time = time.time()
-        self._last_left_position = self._left_motor.position
-        self._last_right_position = self._right_motor.position
+        self._last_left_traveled = self._left_traveled_getter()
+        self._last_right_traveled = self._right_traveled_getter()
 
         self._x = 0
         self._y = 0
@@ -45,14 +40,14 @@ class OdometryCalculator:
             current_time = time.time()
             time_change = current_time - last_time
 
-            pos_left = self._left_motor.position
-            pos_right = self._right_motor.position
+            pos_left = self._left_traveled_getter()
+            pos_right = self._right_traveled_getter()
 
-            delta_left = pos_left - self._last_left_position
-            delta_right = pos_right - self._last_right_position
+            delta_left = pos_left - self._last_left_traveled
+            delta_right = pos_right - self._last_right_traveled
 
-            v_left = (delta_left * self._left_motor_distance_per_tacho_count) / time_change
-            v_right = (delta_right * self._right_motor_distance_per_tacho_count) / time_change
+            v_left = delta_left / time_change
+            v_right = delta_right / time_change
 
             vx = (v_right + v_left) / 2
             v_angle = (v_right - v_left) / self._distance_between_wheels
@@ -67,7 +62,26 @@ class OdometryCalculator:
             self._angle_rad += delta_angle
 
             self._last_time = current_time
-            self._last_left_position = pos_left
+            self._last_left_traveled = pos_left
+            self._last_right_traveled = pos_right
+
+
+def from_wheels(*wheels: Wheel) -> OdometryCalculator:
+    left_wheel = min(wheels, key=lambda wheel: wheel.offset, default=None)
+    right_wheel = max(wheels, key=lambda wheel: wheel.offset, default=None)
+    if left_wheel is None or right_wheel is None or left_wheel.info.position.x == right_wheel.info.position.x:
+        raise Exception('Invalid wheels input. Required two wheels with different offset at last.')
+
+    left_motor = left_wheel.motor
+    right_motor = right_wheel.motor
+    distance_between_wheels = right_wheel.info.position.x - left_wheel.info.position.x
+    left_motor_distance_per_tacho_count = (left_wheel.info.total_ratio * left_wheel.info.unit_ratio) ** -1
+    right_motor_distance_per_tacho_count = (right_wheel.info.total_ratio * right_wheel.info.unit_ratio) ** -1
+    return OdometryCalculator(
+        lambda: left_motor.position * left_motor_distance_per_tacho_count,
+        lambda: right_motor.position * right_motor_distance_per_tacho_count,
+        distance_between_wheels
+    )
 
 
 class PositionsCollector:

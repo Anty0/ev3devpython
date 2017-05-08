@@ -3,9 +3,8 @@ import time
 
 from ev3dev.auto import Button
 
-from hardware.hw_config import SCANNER_REFLECT_HEAD_POSITION, SCANNER_DISTANCE_PROPULSION_POSITION
-from utils.calc.position import Position2D
-from utils.control.odometry import OdometryCalculator, PositionsCollector
+from hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT_SENSOR, BRICK_SCANNER_REFLECT_PROPULSION
+from utils.control.odometry import PositionsCollector, from_wheels as odometry_from_wheels
 from utils.control.pilot import Pilot
 from utils.debug_mode import DEBUG_MODE
 from utils.graph import graph_to_string, GraphPoint
@@ -61,7 +60,7 @@ def perform_detailed_line_scan(shared: ShareAccessInterface, pilot: Pilot, scann
     scan_result['min_reflect'] = min_reflect
     scan_result['max_reflect'] = max_reflect
 
-    pos_center_to_sensor_distance = Position2D(0, 0, 0).distance_to(SCANNER_REFLECT_HEAD_POSITION)
+    pos_center_to_sensor_distance = BRICK_SCANNER_REFLECT_SENSOR.position.get(None).point.distance()
     start_position = scan_result['start_position']
     start_position_len = len(start_position)
 
@@ -246,7 +245,7 @@ def run_loop(shared: ShareAccessInterface):
         update_target_position()
 
         log.info('Fixing robot position...')
-        pos_center_to_sensor_distance = Position2D(0, 0, 0).distance_to(SCANNER_REFLECT_HEAD_POSITION)
+        pos_center_to_sensor_distance = BRICK_SCANNER_REFLECT_SENSOR.position.get(None).distance()
         angle_fix = math.degrees(math.asin(
             (line_info['position_offset'] - target_position) / pos_center_to_sensor_distance
         ))
@@ -255,16 +254,18 @@ def run_loop(shared: ShareAccessInterface):
 
     perform_line_scan()
 
-    odometry = OdometryCalculator(*pilot.wheels)
+    odometry = odometry_from_wheels(*pilot.wheels)
     robot_positions_collector = PositionsCollector(odometry) if DEBUG_MODE else None
     line_positions = []
 
-    pos_center_to_propulsion_angle_rad = SCANNER_DISTANCE_PROPULSION_POSITION.angle_rad
-    pos_center_to_propulsion_distance = Position2D(0, 0, 0).distance_to(SCANNER_DISTANCE_PROPULSION_POSITION)
+    sensor_position = BRICK_SCANNER_REFLECT_SENSOR.position.get(None)
+    propulsion_position = BRICK_SCANNER_REFLECT_PROPULSION.position.get(None)
 
-    pos_propulsion_to_sensor_angle_rad = \
-        SCANNER_REFLECT_HEAD_POSITION.angle_rad - SCANNER_DISTANCE_PROPULSION_POSITION.angle_rad
-    pos_propulsion_to_sensor_distance = SCANNER_DISTANCE_PROPULSION_POSITION.distance_to(SCANNER_REFLECT_HEAD_POSITION)
+    pos_center_to_propulsion_angle_rad = propulsion_position.angle.rad_z
+    pos_center_to_propulsion_distance = propulsion_position.point.distance()
+
+    pos_propulsion_to_sensor_angle_rad = sensor_position.angle.rad_z - pos_center_to_propulsion_angle_rad
+    pos_propulsion_to_sensor_distance = propulsion_position.point.distance(sensor_position)
 
     pos_sensor_to_line_angle_rad = math.radians(-90)
     try:
@@ -318,8 +319,8 @@ def run_loop(shared: ShareAccessInterface):
             ch_y = pos_center_to_propulsion_distance + (
                 math.cos(pos_scanner_angle_rad) * pos_propulsion_to_sensor_distance
             )
-            course_r = (ch_x ** 2 + ch_y ** 2) / (
-            2 * ch_x) if ch_x != 0 else None  # None course_r causes strait a head drive
+            course_r = (ch_x ** 2 + ch_y ** 2) / (2 * ch_x) if ch_x != 0 else None
+            # None course_r causes strait a head drive
 
             if shared.data.pause:
                 pilot.update_duty_cycle_unit(course_r, target_duty_cycle=0, max_duty_cycle=config['TARGET_POWER'])

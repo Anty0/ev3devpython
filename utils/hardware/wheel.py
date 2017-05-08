@@ -2,23 +2,36 @@ import math
 
 from ev3dev.auto import Motor
 
-from utils.calc.position import Position2D
+from utils.calc import dimensions as dp
+from utils.calc.size import WheelSize
+
+
+class WheelInfo:
+    def __init__(self, position: dp.Position, size: WheelSize, count_per_rot: int, gear_ratio: float):
+        self.position = position  # FIXME: fix position usages
+        self.size = size
+
+        self.gear_ratio = gear_ratio
+        self.motor_tacho_ratio = count_per_rot / 360
+        self.total_ratio = self.gear_ratio * self.motor_tacho_ratio
+        self.unit_ratio = 360 / (math.pi * self.size.diameter)
+        self.unit_ratio_rad = math.radians(360) / (math.pi * self.size.diameter)
 
 
 class Wheel:
-    def __init__(self, motor: Motor, gear_ratio: float, diameter: float,
-                 width: float, offset: float):
+    def __init__(self, motor: Motor, info: WheelInfo):  # FIXME: remove old usages of non info values
         self.motor = motor
-        self.diameter = diameter
-        self.width = width
+        self.info = info
+        self.diameter = info.size.diameter
+        self.width = info.size.width
 
-        self.offset = offset
-        self.offset_position = Position2D(offset, 0, 0)
+        self.offset = info.position.point.x
+        self.offset_position = info.position
 
-        self.gear_ratio = gear_ratio
-        self.motor_tacho_ratio = motor.count_per_rot / 360 if motor.connected else 1
-        self.total_ratio = self.gear_ratio * self.motor_tacho_ratio
-        self.unit_ratio = 360 / (math.pi * self.diameter)
+        self.gear_ratio = info.gear_ratio
+        self.motor_tacho_ratio = info.motor_tacho_ratio
+        self.total_ratio = info.total_ratio
+        self.unit_ratio = info.unit_ratio
 
     def generate_json_info(self):
         return {

@@ -29,4 +29,12 @@ class Size:
             'weight': self.weight
         }
 
-        # TODO: add some calculations
+
+class WheelSize(Size):
+    def __init__(self, width: float, diameter: float, weight: float):
+        super().__init__(width, diameter, diameter, weight)
+        self._diameter = diameter
+
+    @property
+    def diameter(self):
+        return self._diameter

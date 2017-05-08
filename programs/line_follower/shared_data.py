@@ -8,18 +8,18 @@ from .config import CONFIG_VALUES
 
 class LineFollowerSharedData:
     def __init__(self, config: dict = None):
-        from hardware.robot import ROBOT_INFO
-        from hardware.pilot import PILOT
-        from hardware.scanner_reflect import SCANNER_REFLECT
-        from hardware.scanner_distance import SCANNER_DISTANCE
+        from hardware.hw_config import Robot
+        from hardware.generator import HW_GENERATOR
+        from hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT
+        from hardware.brick_scanner_distance import BRICK_SCANNER_DISTANCE
 
-        if not PILOT.is_connected or not SCANNER_REFLECT.head_connected:
+        self.robot_size = Robot.size
+        self.pilot = HW_GENERATOR.pilot()
+        self.scanner_reflect = HW_GENERATOR.scanner(BRICK_SCANNER_REFLECT)
+        self.scanner_distance = HW_GENERATOR.scanner(BRICK_SCANNER_DISTANCE)
+
+        if not self.pilot.is_connected or not self.scanner_reflect.head_connected:
             raise Exception('LineFollower requires wheels and color sensor at last.')
-
-        self.robot_info = ROBOT_INFO
-        self.pilot = PILOT
-        self.scanner_reflect = SCANNER_REFLECT
-        self.scanner_distance = SCANNER_DISTANCE
 
         self.config = RuntimeConfig(config_map=CONFIG_VALUES, config_modifications=config)
 
@@ -45,7 +45,7 @@ class LineFollowerSharedData:
     def get_new_graphs(self) -> list:
         with self._graphs_lock:
             new_graphs = self._graphs
-            self.graphs = {}
+            self._graphs = []
 
         return new_graphs
 
@@ -58,7 +58,7 @@ class LineFollowerSharedData:
     def generate_json_info(self):
         return {
             'pause': self.pause,
-            'robot_info': self.robot_info.generate_json_info(),
+            'robot_size': self.robot_size.generate_json_info(),
             'pilot': self.pilot.generate_json_info(),
             'scanner_reflect': self.scanner_reflect.generate_json_info(),
             'scanner_distance': self.scanner_distance.generate_json_info(),

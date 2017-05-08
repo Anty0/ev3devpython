@@ -1,13 +1,12 @@
 import time
 
-# from hardware.wheels import LEFT_MOTOR, RIGHT_MOTOR
-from hardware.pilot import PILOT
-# from utils.calc.range import Range
-from utils.control.odometry import PositionsCollector, OdometryCalculator
+from hardware.generator import HW_GENERATOR
+from utils.control.odometry import PositionsCollector, from_wheels
 from utils.graph import graph_to_string, GraphPoint
 from utils.threading.cycle_thread import CycleThread
 
-odometry = OdometryCalculator(*PILOT.wheels)
+pilot = HW_GENERATOR.pilot()
+odometry = from_wheels(*pilot.wheels)
 odometry_thread = CycleThread(target=odometry.cycle, sleep_time=0.02, daemon=True)
 position_collector = PositionsCollector(odometry)
 position_collector_thread = CycleThread(target=position_collector.cycle, sleep_time=0.02, daemon=True)
@@ -21,7 +20,7 @@ def print_positions():
 try:
     print('Running...')
 
-    PILOT.reset()
+    pilot.reset()
     odometry_thread.start()
     position_collector_thread.start()
 
@@ -34,8 +33,8 @@ try:
     #     time.sleep(0.5)
 
     def wait_to_stop():
-        PILOT.wait_to_stop()
-        # while PILOT.is_running():
+        pilot.wait_to_stop()
+        # while pilot.is_running():
         #     print_positions()
         #     time.sleep(0.5)
         # time.sleep(0.5)
@@ -43,16 +42,16 @@ try:
         time.sleep(1.5)
 
 
-    PILOT.run_percent_drive_to_distance(25, 0, speed_mul=0.1)
+    pilot.run_percent_drive_to_distance(25, 0, speed_mul=0.1)
     wait_to_stop()
-    PILOT.run_percent_drive_to_angle_deg(90, 100, speed_mul=0.1)
+    pilot.run_percent_drive_to_angle_deg(90, 100, speed_mul=0.1)
     wait_to_stop()
-    PILOT.run_percent_drive_to_angle_deg(90, 150, speed_mul=0.1)
+    pilot.run_percent_drive_to_angle_deg(90, 150, speed_mul=0.1)
     wait_to_stop()
-    PILOT.run_percent_drive_to_distance(25, 0, speed_mul=0.1)
+    pilot.run_percent_drive_to_distance(25, 0, speed_mul=0.1)
     wait_to_stop()
 finally:
-    PILOT.stop()
+    pilot.stop()
     odometry_thread.stop()
     odometry_thread.wait_to_stop()
     position_collector_thread.stop()

@@ -1,10 +1,10 @@
 from threading import Lock
 
-from programs.line_follower.thread_collision_avoid import run_loop as run_loop_collision_avoid
 from utils.program import ProgramApiHandler
 from utils.threading.co_working_threads import ThreadsController
 from .config import THREAD_LINE_FOLLOW_NAME, THREAD_COLLISION_AVOID_NAME
 from .shared_data import LineFollowerSharedData as SharedData
+from .thread_collision_avoid import run_loop as run_loop_collision_avoid
 from .thread_line_follow import run_loop as run_loop_line_follow
 
 
