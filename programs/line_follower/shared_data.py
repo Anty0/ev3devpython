@@ -1,6 +1,5 @@
 from threading import Lock
 
-from utils.debug_mode import DEBUG_MODE
 from utils.program import graph_obj_to_string
 from utils.runtime_config import RuntimeConfig
 from .config import CONFIG_VALUES
@@ -31,7 +30,7 @@ class LineFollowerSharedData:
             'reflect_to_position_list': [0] * 101,
         }
 
-        self.pause = DEBUG_MODE
+        self.pause = False  # FIXME: DEBUG_MODE
         self.perform_line_scan = True
 
         self._graphs_lock = Lock()
@@ -53,7 +52,7 @@ class LineFollowerSharedData:
         self.pilot.reset()
         self.scanner_reflect.reset()
         self.scanner_distance.reset()
-        self.pause = True
+        self.pause = False  # FIXME: DEBUG_MODE
 
     def generate_json_info(self):
         return {

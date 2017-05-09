@@ -1,7 +1,7 @@
 from ev3dev.auto import INPUT_1 as IN_1, INPUT_2 as IN_2, INPUT_3 as IN_3, INPUT_4 as IN_4, \
     OUTPUT_A as OUT_A, OUTPUT_B as OUT_B, OUTPUT_C as OUT_C, OUTPUT_D as OUT_D
 
-from utils.hardware.brick.base import Brick, WheelBrick
+from utils.hardware.brick.base import Brick
 from utils.hardware.brick.main_brick import MainBrick
 
 
@@ -24,13 +24,11 @@ class Bricks:
                 return port
         return None
 
-    def wheels_bricks(self) -> tuple:
-        return tuple(
-            filter(
-                lambda brick: isinstance(brick, WheelBrick),
-                self.tuple_bricks
-            )
-        )
+    def bricks_of_type(self, bricks_type: type) -> tuple:
+        return tuple(filter(
+            lambda brick: isinstance(brick, bricks_type),
+            self.tuple_bricks
+        ))
 
     def generate_json_info(self):
         return {}  # TODO: implement

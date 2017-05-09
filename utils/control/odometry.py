@@ -69,12 +69,13 @@ class OdometryCalculator:
 def from_wheels(*wheels: Wheel) -> OdometryCalculator:
     left_wheel = min(wheels, key=lambda wheel: wheel.offset, default=None)
     right_wheel = max(wheels, key=lambda wheel: wheel.offset, default=None)
-    if left_wheel is None or right_wheel is None or left_wheel.info.position.x == right_wheel.info.position.x:
+    if left_wheel is None or right_wheel is None or \
+                    left_wheel.info.position.point.x == right_wheel.info.position.point.x:
         raise Exception('Invalid wheels input. Required two wheels with different offset at last.')
 
     left_motor = left_wheel.motor
     right_motor = right_wheel.motor
-    distance_between_wheels = right_wheel.info.position.x - left_wheel.info.position.x
+    distance_between_wheels = right_wheel.info.position.point.x - left_wheel.info.position.point.x
     left_motor_distance_per_tacho_count = (left_wheel.info.total_ratio * left_wheel.info.unit_ratio) ** -1
     right_motor_distance_per_tacho_count = (right_wheel.info.total_ratio * right_wheel.info.unit_ratio) ** -1
     return OdometryCalculator(

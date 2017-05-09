@@ -19,6 +19,8 @@ class WorldMap:
     def __init__(self, width: int, height: int):
         import numpy as np
         self.contents = np.empty([width, height], dtype=np.byte)
+        self.contents.fill(0)
+        self.changes = []
         self.shape = self.contents.shape
         self.width = self.shape[0]
         self.height = self.shape[1]
@@ -28,21 +30,28 @@ class WorldMap:
             return 0
         return self.contents[x][y]
 
+    def get_filtered(self, x, y, flag):
+        if x < 0 or y < 0 or x >= self.width or y >= self.height:
+            return 0
+        return self.contents[x][y] & flag
+
     def set(self, x, y, flag):
         if x < 0 or y < 0 or x >= self.width or y >= self.height:
             pass
         self.contents[x][y] = self.contents[x][y] | flag
+        self.changes.append(((x, y), self.contents[x][y]))
 
     def clear(self, x, y, clear_flag):
         if x < 0 or y < 0 or x >= self.width or y >= self.height:
             pass
         self.contents[x][y] = self.contents[x][y] & clear_flag
+        self.changes.append(((x, y), self.contents[x][y]))
 
     def wall(self, x: int, y: int) -> bool:
-        return bool(self.get(x, y) & self.FLAG_WALL)
+        return bool(self.get_filtered(x, y, self.FLAG_WALL))
 
     def bacon(self, x: int, y: int) -> bool:
-        return bool(self.get(x, y) & self.FLAG_BACON)
+        return bool(self.get_filtered(x, y, self.FLAG_BACON))
 
     def color_rgb(self, x: int, y: int) -> list:
         pos_content = self.get(x, y)
@@ -51,7 +60,7 @@ class WorldMap:
         ]
 
     def light_and_noise(self, x: int, y: int) -> float:
-        return (self.get(x, y) & self.FLAG_LIGHT_AND_NOISE) / 7 * 100
+        return self.get_filtered(x, y, self.FLAG_LIGHT_AND_NOISE) / 7 * 100
 
     def create_lines(self, points: list, flag: int):
         for i in range(1, len(points)):

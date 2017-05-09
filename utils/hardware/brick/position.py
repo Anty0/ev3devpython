@@ -4,7 +4,7 @@ from utils.hardware.brick.active_bricks_info_provider import ActiveBricksInfoPro
 
 class BrickPosition:
     def get(self, active_bricks_info_provider: ActiveBricksInfoProvider or None) -> dp.Position:
-        pass
+        raise NotImplementedError()
 
 
 class AbsoluteBrickPosition(BrickPosition):
@@ -37,7 +37,7 @@ class RelativeBrickPosition(BrickPosition):
                     .rotate(parent_position.angle)
             )
 
-        return dp.Position(
+        result_pos = dp.Position(
             self._position.point.copy()
                 .rotate(parent_position.angle)
                 .rotate(parent_position_change.rotation)
@@ -48,3 +48,4 @@ class RelativeBrickPosition(BrickPosition):
                 .rotate(parent_position.angle)
                 .rotate(parent_position_change.rotation)
         )
+        return result_pos

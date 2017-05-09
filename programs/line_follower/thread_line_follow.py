@@ -233,23 +233,23 @@ def run_loop(shared: ShareAccessInterface):
     target_position = 0
 
     def update_target_position():
-        global target_position, line_info
+        nonlocal target_position
         target_position = config['TARGET_POSITION'] / 100 * line_info['max_position']
 
     def perform_line_scan():
         log.info('Starting line scan...')
-        global line_info
         shared.data.perform_line_scan = False
         scan_result = perform_detailed_line_scan(shared, pilot, scanner_reflect)
         if scan_result is None:
             return False
 
+        nonlocal line_info
         line_info = scan_result
         shared.data.line_info = line_info
         update_target_position()
 
         log.info('Fixing robot position...')
-        pos_center_to_sensor_distance = BRICK_SCANNER_REFLECT_SENSOR.position.get(None).distance()
+        pos_center_to_sensor_distance = BRICK_SCANNER_REFLECT_SENSOR.position.get(None).point.distance()
         angle_fix = math.degrees(math.asin(
             (line_info['position_offset'] - target_position) / pos_center_to_sensor_distance
         ))
@@ -272,7 +272,7 @@ def run_loop(shared: ShareAccessInterface):
     pos_center_to_propulsion_distance = propulsion_position.point.distance()
 
     pos_propulsion_to_sensor_angle_rad = sensor_position.angle.rad_z - pos_center_to_propulsion_angle_rad
-    pos_propulsion_to_sensor_distance = propulsion_position.point.distance(sensor_position)
+    pos_propulsion_to_sensor_distance = propulsion_position.point.distance(sensor_position.point)
 
     pos_sensor_to_line_angle_rad = math.radians(-90)
     try:
@@ -283,6 +283,7 @@ def run_loop(shared: ShareAccessInterface):
                 time.sleep(0)
             time.sleep(0.2)
 
+        log.info('Line following started...')
         pilot.run_direct()
         while shared.should_run():
             if runtime_config.update_extracted_config(config):

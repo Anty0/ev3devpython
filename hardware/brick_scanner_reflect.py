@@ -6,6 +6,7 @@ from utils.hardware.brick.sensors import ColorSensorBrick
 from utils.hardware.sensor import SensorHeadReflectMode
 
 BRICK_SCANNER_REFLECT_PROPULSION = EV3MediumMotorBrick(AbsoluteBrickPosition(hwc.ScannerReflect.Propulsion.pos_abs))
+BRICK_SCANNER_REFLECT_PROPULSION.hw_position_range = hwc.ScannerReflect.Propulsion.position_range
 
 BRICK_SCANNER_REFLECT_SENSOR = ColorSensorBrick(
     RelativeBrickPosition(hwc.ScannerReflect.Head.pos_rel, BRICK_SCANNER_REFLECT_PROPULSION,

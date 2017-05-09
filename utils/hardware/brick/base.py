@@ -105,10 +105,12 @@ class SensorBrick(ConnectableBrick):
 class WheelBrick(Brick):
     def __init__(self, propulsion_brick: ActiveBrick, wheel_info: WheelInfo, position: BrickPosition = None):
         if position is None:
-            propulsion_position = propulsion_brick.position.get(None)
+            propulsion_position_neg = propulsion_brick.position.get(None).copy().negate()
             position_offset = dp.Position(
-                wheel_info.position.point.copy().move(propulsion_position.point.copy().negate()),
-                wheel_info.position.angle.copy().rotate(propulsion_position.angle.copy().negate())
+                wheel_info.position.point.copy()
+                    .move(propulsion_position_neg.point)
+                    .rotate(propulsion_position_neg.angle),
+                wheel_info.position.angle.copy().rotate(propulsion_position_neg.angle)
             )
             position = RelativeBrickPosition(position_offset, propulsion_brick,
                                              gear_rotation=position_offset.angle,

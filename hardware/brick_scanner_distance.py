@@ -6,6 +6,7 @@ from utils.hardware.brick.sensors import InfraredSensorBrick
 from utils.hardware.sensor import SensorHeadDistanceMode
 
 BRICK_SCANNER_DISTANCE_PROPULSION = EV3MediumMotorBrick(AbsoluteBrickPosition(hwc.ScannerDistance.Propulsion.pos_abs))
+BRICK_SCANNER_DISTANCE_PROPULSION.hw_position_range = hwc.ScannerDistance.Propulsion.position_range
 
 BRICK_SCANNER_DISTANCE_SENSOR = InfraredSensorBrick(
     RelativeBrickPosition(hwc.ScannerDistance.Head.pos_rel, BRICK_SCANNER_DISTANCE_PROPULSION,

@@ -1,5 +1,7 @@
 import math
 
+from utils.calc.quaternion import Quat
+
 
 class Point:
     def __init__(self, x: float, y: float, z: float):
@@ -22,6 +24,13 @@ class Point:
         #     self.y = 0
         #     self.z = 0
 
+    def __str__(self):
+        return '{' + \
+               'x: ' + str(self.x) + ', ' + \
+               'y: ' + str(self.y) + ', ' + \
+               'z: ' + str(self.z) + \
+               '}'
+
 
 class Angle:
     def __init__(self, rad_z: float = 0, rad_x: float = 0, rad_y: float = 0):
@@ -33,13 +42,25 @@ class Angle:
     def deg_z(self):
         return math.degrees(self.rad_z)
 
+    @deg_z.setter
+    def deg_z(self, deg_z):
+        self.rad_z = math.radians(deg_z)
+
     @property
     def deg_x(self):
         return math.degrees(self.rad_x)
 
+    @deg_x.setter
+    def deg_x(self, deg_x):
+        self.rad_x = math.radians(deg_x)
+
     @property
     def deg_y(self):
         return math.degrees(self.rad_y)
+
+    @deg_y.setter
+    def deg_y(self, deg_y):
+        self.rad_y = math.radians(deg_y)
 
     def __copy__(self):
         return self.copy()
@@ -57,6 +78,13 @@ class Angle:
         #     self.angle_x_rad = 0
         #     self.angle_y_rad = 0
 
+    def __str__(self):
+        return '{' + \
+               'deg_x: ' + str(self.deg_x) + ', ' + \
+               'deg_y: ' + str(self.deg_y) + ', ' + \
+               'deg_z: ' + str(self.deg_z) + \
+               '}'
+
 
 class Position:
     def __init__(self, point: Point, angle: Angle):
@@ -72,10 +100,17 @@ class Position:
     def negate(self):
         self.point.negate()
         self.angle.negate()
+        return self
 
         # def reset(self):
         #     self.point.reset()
         #     self.angle.reset()
+
+    def __str__(self):
+        return '{' + \
+               'point: ' + str(self.point) + ', ' + \
+               'angle: ' + str(self.angle) + \
+               '}'
 
 
 def move(point: Point, vector: Point) -> Point:
@@ -134,10 +169,28 @@ def rotate_point(point: Point, angle: Angle, around: Point = None) -> Point:
     return point
 
 
-def rotate_angle(angle: Angle, by: Angle) -> Angle:  # FIXME: not working properly
-    angle.rad_z += by.rad_z
-    angle.rad_x += by.rad_x
-    angle.rad_y += by.rad_y
+def rotate_angle(angle: Angle, by: Angle) -> Angle:
+    list_angle = [angle.deg_x, angle.deg_y, angle.deg_z]
+    list_by = [by.deg_x, by.deg_y, by.deg_z]
+    list_tmp = [0, 0, 0]
+    for i in range(3):
+        angle_off = list_angle[i] // 90
+        by_off = list_by[i] // 90
+        list_angle[i] -= angle_off * 90
+        list_by[i] -= by_off * 90
+        list_tmp[i] = angle_off + by_off
+
+    q1 = Quat(list_by)
+    q2 = Quat(list_angle)
+    q = q1 * q2
+    list_result = [q.ra, q.dec, q.roll]
+    for i in range(3):
+        list_result[i] += list_tmp[i] * 90
+
+    angle.deg_x, angle.deg_y, angle.deg_z = list_result
+    # angle.rad_z += by.rad_z
+    # angle.rad_x += by.rad_x
+    # angle.rad_y += by.rad_y
     return angle
 
 

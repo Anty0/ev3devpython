@@ -2,6 +2,7 @@ import math
 import sys
 
 from utils.calc import dimensions as dp
+from utils.calc.range import Range
 from utils.calc.size import WheelSize, Size
 from utils.hardware.brick.bricks import IN_3, IN_4, OUT_A, OUT_B, OUT_C, OUT_D
 from utils.hardware.propulsion import ScannerPropulsionInfo
@@ -49,6 +50,7 @@ class ScannerDistance:
         port = OUT_A
         pos_abs = dp.Position(dp.Point(0, 0, 0), dp.Angle())
         info = ScannerPropulsionInfo(-20 / 12, 360)
+        position_range = Range(-125, 125)
 
     class Head:
         port = IN_4
@@ -61,6 +63,7 @@ class ScannerReflect:
         port = OUT_D
         pos_abs = dp.Position(dp.Point(0, 5.5, 0), dp.Angle())
         info = ScannerPropulsionInfo(-20 / 12, 360)
+        position_range = Range(-90, 90)
 
     class Head:
         port = IN_3

@@ -1,10 +1,12 @@
 from utils.hardware.simulation.brick_controller import BricksControllers
 from utils.hardware.simulation.driver import DRIVERS_MAP, DeviceDriver
+from utils.hardware.simulation.robot_position_updater import RobotPositionUpdater
 
 
 class EnvironmentSimulator:
-    def __init__(self, bricks_controllers: BricksControllers):
+    def __init__(self, bricks_controllers: BricksControllers, robot_position_updater: RobotPositionUpdater):
         self.bricks_controllers = bricks_controllers
+        self.robot_position_updater = robot_position_updater
 
         self.environment = {}
         self._drivers = {}
@@ -34,3 +36,6 @@ class EnvironmentSimulator:
         self.environment[class_name][name + str(index)] = driver
         self._drivers[brick] = driver
         return driver
+
+    def generate_json_info(self):
+        return {}  # TODO: implement

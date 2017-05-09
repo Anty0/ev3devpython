@@ -2,7 +2,7 @@ from ev3dev.auto import Device
 
 from utils.calc import dimensions as dp
 from utils.control.pilot import Pilot
-from utils.hardware.brick.base import Brick, ScannerBrick
+from utils.hardware.brick.base import Brick, ScannerBrick, WheelBrick
 from utils.hardware.brick.bricks import Bricks
 from utils.hardware.brick.main_brick import MainBrick
 from utils.hardware.propulsion import ScannerPropulsion
@@ -13,11 +13,14 @@ from utils.hardware.simulation.simulator import EnvironmentSimulator
 from utils.hardware.simulation.world import World
 from utils.hardware.simulation.world_map import WorldMap
 from utils.hardware.wheel import Wheel
+from utils.log import get_logger
 from utils.sensor.scanner import Scanner
+
+log = get_logger(__name__)
 
 
 class HWControllerGenerator:
-    def __init__(self, bricks: Bricks, environment_simulator: EnvironmentSimulator or None):
+    def __init__(self, bricks: Bricks, environment_simulator: EnvironmentSimulator = None):
         self.bricks = bricks
         self.environment_simulator = environment_simulator
 
@@ -43,17 +46,19 @@ class HWControllerGenerator:
         hw_types = HW_MAP[brick.hw_driver]
         if self.environment_simulator is not None:
             hw_controller = hw_types[0](self.environment_simulator, address=address)
-            print('Generating real HWController: ', [hw_types[0], address, hw_controller.connected])
+            log.info('Generating simulated HWController: ' +
+                     str([hw_types[0].__name__, address, hw_controller.connected]))
         else:
             hw_controller = hw_types[1](address=address)
-            print('Generating simulated HWController: ', [hw_types[0], address, hw_controller.connected])
+            log.info('Generating real HWController: ' +
+                     str([hw_types[1].__name__, address, hw_controller.connected]))
 
         self._hw_controllers[brick] = hw_controller
         return hw_controller
 
     def wheels(self) -> tuple:
         if self._wheels is None:
-            wheels_bricks = self.bricks.wheels_bricks()
+            wheels_bricks = self.bricks.bricks_of_type(WheelBrick)
             self._wheels = tuple((
                 Wheel(self.hw_controller_for(wheel_brick), wheel_brick.wheel_info)
                 for wheel_brick in wheels_bricks
@@ -84,18 +89,31 @@ class HWControllerGenerator:
         }
 
 
+def log_bricks_info(bricks: Bricks, bricks_controllers: BricksControllers = None):
+    log.info('BricksInfo:')
+    for brick in bricks.tuple_bricks:
+        brick_type = type(brick)
+        address = bricks.brick_port(brick)
+        position = brick.position.get(bricks_controllers)
+        log.info('--Type: ' + str(brick_type.__name__) + ', Address: ' + str(address) + ',  Position: ' + str(position))
+
+
 def build_simulated(world_map: WorldMap, main_brick: MainBrick, *bricks: Brick,
                     robot_position: dp.Position = None, **ports: Brick) -> HWControllerGenerator:
+    log.info('Building simulated HWController...')
     if robot_position is None:
         robot_position = dp.Position(dp.Point(world_map.width / 2, world_map.height / 2, 0), dp.Angle())
     bricks = Bricks(main_brick, *bricks, **ports)
     world = World(robot_position, world_map)
     bricks_controllers = BricksControllers(world, bricks)
-    RobotPositionUpdater(bricks, bricks_controllers, robot_position)
-    env_simulator = EnvironmentSimulator(bricks_controllers)
+    robot_position_updater = RobotPositionUpdater(bricks, bricks_controllers, robot_position)
+    env_simulator = EnvironmentSimulator(bricks_controllers, robot_position_updater)
+    log_bricks_info(bricks, bricks_controllers)
     return HWControllerGenerator(bricks, env_simulator)
 
 
 def build_real(main_brick: MainBrick, *bricks: Brick, **ports: Brick) -> HWControllerGenerator:
+    log.info('Building real HWController...')
     bricks = Bricks(main_brick, *bricks, **ports)
+    log_bricks_info(bricks)
     return HWControllerGenerator(bricks, None)

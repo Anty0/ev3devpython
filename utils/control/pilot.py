@@ -132,7 +132,7 @@ class DriveCoordinator(CycleThreadCoordinator):
         min_traveled = min_action.traveled_units()
         max_traveled = max_action.traveled_units()
 
-        if abs(max_traveled) + abs(min_traveled) < 0.5:
+        if min_traveled == max_traveled or abs(max_traveled) + abs(min_traveled) < 0.5:
             return False
 
         if max_traveled == 0:
@@ -423,7 +423,7 @@ class Pilot:
         self._raw_run_tacho_ready(time_len, angle_deg, distance_unit, speeds_tacho, max_duty_cycle, async)
 
     def _raw_run_tacho_ready(self, time_len, angle_deg, distance_unit, speeds_tacho, max_duty_cycle, async):
-        async = True  # TODO: test
+        # async = True  # TODO: test
         if async:
             self._stop_coordinator()
             if time_len is not None:
@@ -593,7 +593,7 @@ class Pilot:
         self.update_duty_cycle_raw(self._course_percent_to_speeds(course_percent, max_duty_cycle, min_duty_cycle,
                                                                   target_duty_cycle, mul_duty_cycle))
 
-    def update_duty_cycle_unit(self, course_r: float, target_duty_cycle: int = 100, max_duty_cycle: int = 100):
+    def update_duty_cycle_unit(self, course_r: float, target_duty_cycle: int = None, max_duty_cycle: int = 100):
         self.update_duty_cycle_raw(self._course_r_to_speeds(course_r, target_duty_cycle, max_duty_cycle))
 
     def set_stop_action(self, stop_action: str):

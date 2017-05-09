@@ -1,5 +1,3 @@
-import time
-
 from ev3dev.auto import Motor, TouchSensor, ColorSensor, UltrasonicSensor, \
     GyroSensor, InfraredSensor, SoundSensor, LightSensor
 
@@ -30,10 +28,8 @@ class MotorDriver(DeviceDriver):  # FIXME: return default value if brick have no
 
     def __init__(self, bricks: Bricks, brick_controller: MotorBrickController):
         DeviceDriver.__init__(self, bricks, brick_controller)
-        self._last_command = Motor.COMMAND_STOP
-        self._last_command_args = {'stop_action': Motor.STOP_ACTION_COAST}
-
         self._command = Motor.COMMAND_STOP
+        self._command_args = {'stop_action': Motor.STOP_ACTION_COAST}
         self._duty_cycle_sp = 0
         self._polarity = Motor.POLARITY_NORMAL
         self._position_sp = 0
@@ -54,55 +50,70 @@ class MotorDriver(DeviceDriver):  # FIXME: return default value if brick have no
         raise Exception("command is a write-only property!")
 
     @command.setter
-    def command(self, value):
-        if value not in self.brick.hw_commands:
-            raise Exception('Invalid command: ' + value)
+    def command(self, new_command):
+        if new_command not in self.brick.hw_commands:
+            raise Exception('Invalid command: ' + new_command)
 
-        actual_command = self._command
-        if self._last_command != actual_command:
-            if actual_command == Motor.COMMAND_RUN_FOREVER:
-                self._last_command_args = {'speed': self._speed_sp}
+        if self._command != new_command:
+            if new_command == Motor.COMMAND_RUN_FOREVER:
+                self._command_args = {'speed': self._speed_sp}
                 self.brick_controller.power = self.brick_controller.power_for_speed(self._last_command_args['speed'])
                 self._state = [Motor.STATE_RUNNING]
-            elif actual_command == Motor.COMMAND_RUN_TO_ABS_POS:
-                self._last_command_args = {
-                    'speed': self._speed_sp,
-                    'position': self._position_sp,
-                    'stop_action': self._stop_action
-                }
-                self.brick_controller.power = 0
-                self._state = [Motor.STATE_RUNNING]
+            elif new_command == Motor.COMMAND_RUN_TO_ABS_POS:
+                # self._command_args = {
+                #     'speed': self._speed_sp,
+                #     'position': self._position_sp,
+                #     'stop_action': self._stop_action
+                # }
+                # self.brick_controller.power = 0
+                # self._state = [Motor.STATE_RUNNING]
                 # TODO: implement
-            elif actual_command == Motor.COMMAND_RUN_TO_REL_POS:
-                self._last_command_args = {
-                    'speed': self._speed_sp,
-                    'position': self.brick_controller.position + self._position_sp,
-                    'stop_action': self._stop_action
-                }
+                new_command = Motor.COMMAND_STOP
                 self.brick_controller.power = 0
-                self._state = [Motor.STATE_RUNNING]
+                self.brick_controller.position = self._position_sp
+                self._command_args = {'stop_action': self._stop_action}
+                self._state = [] if self._stop_action != Motor.STOP_ACTION_HOLD else [Motor.STATE_HOLDING]
+            elif new_command == Motor.COMMAND_RUN_TO_REL_POS:
+                # self._command_args = {
+                #     'speed': self._speed_sp,
+                #     'position': self.brick_controller.position + self._position_sp,
+                #     'stop_action': self._stop_action
+                # }
+                # self.brick_controller.power = 0
+                # self._state = [Motor.STATE_RUNNING]
                 # TODO: implement
-            elif actual_command == Motor.COMMAND_RUN_TIMED:
-                self._last_command_args = {
-                    'speed': self._speed_sp,
-                    'start_time': time.time(),
-                    'time': self._time_sp / 1000,
-                    'stop_action': self._stop_action
-                }
+                new_command = Motor.COMMAND_STOP
                 self.brick_controller.power = 0
-                self._state = [Motor.STATE_RUNNING]
+                self.brick_controller.position = self.brick_controller.position + self._position_sp
+                self._command_args = {'stop_action': self._stop_action}
+                self._state = [] if self._stop_action != Motor.STOP_ACTION_HOLD else [Motor.STATE_HOLDING]
+            elif new_command == Motor.COMMAND_RUN_TIMED:
+                # self._command_args = {
+                #     'speed': self._speed_sp,
+                #     'start_time': time.time(),
+                #     'time': self._time_sp / 1000,
+                #     'stop_action': self._stop_action
+                # }
+                # self.brick_controller.power = 0
+                # self._state = [Motor.STATE_RUNNING]
                 # TODO: implement
-            elif actual_command == Motor.COMMAND_RUN_DIRECT:
-                self._last_command_args = {}
+                new_command = Motor.COMMAND_STOP
+                self.brick_controller.power = 0
+                self.brick_controller.position = \
+                    self.brick_controller.position + (self._time_sp / 1000) * self._speed_sp
+                self._command_args = {'stop_action': self._stop_action}
+                self._state = [] if self._stop_action != Motor.STOP_ACTION_HOLD else [Motor.STATE_HOLDING]
+            elif new_command == Motor.COMMAND_RUN_DIRECT:
+                self._command_args = {}
                 self.brick_controller.power = self._duty_cycle_sp
                 self._state = [Motor.STATE_RUNNING]
-            elif actual_command == Motor.COMMAND_STOP:
+            elif new_command == Motor.COMMAND_STOP:
                 self.brick_controller.power = 0
-                self._last_command_args = {'stop_action': self._stop_action}
+                self._command_args = {'stop_action': self._stop_action}
                 self._state = [] if self._stop_action != Motor.STOP_ACTION_HOLD else [Motor.STATE_HOLDING]
-            elif actual_command == Motor.COMMAND_RESET:
-                actual_command = Motor.COMMAND_STOP
-                self._last_command_args = {}
+            elif new_command == Motor.COMMAND_RESET:
+                new_command = Motor.COMMAND_STOP
+                self._command_args = {}
                 self._duty_cycle_sp = 0
                 self._polarity = Motor.POLARITY_NORMAL
                 self._position_sp = 0
@@ -111,7 +122,7 @@ class MotorDriver(DeviceDriver):  # FIXME: return default value if brick have no
                 self._ramp_down_sp = 0  # TODO: extract from ev3dev drivers
                 self._state = []
                 self._stop_action = Motor.STOP_ACTION_COAST
-            self._last_command = actual_command
+            self._command = new_command
 
     @property
     def commands(self):
@@ -143,7 +154,7 @@ class MotorDriver(DeviceDriver):  # FIXME: return default value if brick have no
     @duty_cycle_sp.setter
     def duty_cycle_sp(self, value):
         self._duty_cycle_sp = int(value)
-        if self._last_command == Motor.COMMAND_RUN_DIRECT:
+        if self._command == Motor.COMMAND_RUN_DIRECT:
             self.brick_controller.power = self._duty_cycle_sp
 
     @property

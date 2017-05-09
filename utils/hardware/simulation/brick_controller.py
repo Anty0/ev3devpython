@@ -92,7 +92,7 @@ class MotorBrickController(ActiveBrickController):
             position = self.brick.hw_position_range.crop(position)
 
         self._position = position
-        self._position_change.rotation.angle_y_rad = 0 if self.brick.hw_count_per_rot is None else \
+        self._position_change.rotation.rad_y = 0 if self.brick.hw_count_per_rot is None else \
             self._position / self.brick.hw_count_per_rot * (2 * math.pi)
         # TODO: support for moving motors
 
