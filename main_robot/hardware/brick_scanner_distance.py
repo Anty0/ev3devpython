@@ -14,6 +14,6 @@ BRICK_SCANNER_DISTANCE_SENSOR = InfraredSensorBrick(
 )
 
 BRICK_SCANNER_DISTANCE = ScannerBrick(
-    hwc.ScannerDistance.Propulsion.info, BRICK_SCANNER_DISTANCE_PROPULSION,
-    lambda distance_sensor: SensorHeadDistanceMode(distance_sensor, None), BRICK_SCANNER_DISTANCE_SENSOR
+    lambda distance_sensor: SensorHeadDistanceMode(distance_sensor, None), BRICK_SCANNER_DISTANCE_SENSOR,
+    hwc.ScannerDistance.Propulsion.info, BRICK_SCANNER_DISTANCE_PROPULSION
 )

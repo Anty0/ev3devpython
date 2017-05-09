@@ -179,8 +179,8 @@ class WheelBrick(Brick):
 
 
 class ScannerBrick(Brick):
-    def __init__(self, propulsion_info: ScannerPropulsionInfo, propulsion_brick: ActiveBrick,
-                 scanner_head_mode_creator: callable, head_brick: SensorBrick):
+    def __init__(self, scanner_head_mode_creator: callable, head_brick: SensorBrick,
+                 propulsion_info: ScannerPropulsionInfo = None, propulsion_brick: ActiveBrick = None):
         super().__init__(head_brick.position)
         self.propulsion_info = propulsion_info
         self.propulsion_brick = propulsion_brick

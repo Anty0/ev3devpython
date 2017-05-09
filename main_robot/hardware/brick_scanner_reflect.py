@@ -14,6 +14,6 @@ BRICK_SCANNER_REFLECT_SENSOR = ColorSensorBrick(
 )
 
 BRICK_SCANNER_REFLECT = ScannerBrick(
-    hwc.ScannerReflect.Propulsion.info, BRICK_SCANNER_REFLECT_PROPULSION,
-    lambda color_sensor: SensorHeadReflectMode(color_sensor), BRICK_SCANNER_REFLECT_SENSOR
+    lambda color_sensor: SensorHeadReflectMode(color_sensor), BRICK_SCANNER_REFLECT_SENSOR,
+    hwc.ScannerReflect.Propulsion.info, BRICK_SCANNER_REFLECT_PROPULSION
 )

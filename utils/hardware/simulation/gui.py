@@ -128,32 +128,43 @@ class WorldGui(Tk):
 
         texts.append('Scanners:')
         for scanner_brick in bricks.bricks_of_type(ScannerBrick):
-            propulsion_brick = scanner_brick.propulsion_brick.resolve_parent()
-            propulsion_port = bricks.brick_port(propulsion_brick)
-            propulsion_brick_controller = bricks_controllers.brick_controller(propulsion_brick, resolve_parent=False)
-            if isinstance(propulsion_brick_controller, MotorBrickController):
-                position_info = str(propulsion_brick_controller.position)
-            else:
-                position_change = propulsion_brick_controller.active_position_change
-                if position_change is None:
-                    position_info = 'Unknown position'
+            propulsion_brick = scanner_brick.propulsion_brick
+            if propulsion_brick is not None:
+                propulsion_brick = propulsion_brick.resolve_parent()
+                propulsion_port = bricks.brick_port(propulsion_brick)
+                propulsion_brick_controller = bricks_controllers.brick_controller(propulsion_brick,
+                                                                                  resolve_parent=False)
+                if isinstance(propulsion_brick_controller, MotorBrickController):
+                    position_info = str(propulsion_brick_controller.position)
                 else:
-                    position_info = str(position_change)
+                    position_change = propulsion_brick_controller.active_position_change
+                    if position_change is None:
+                        position_info = 'Unknown position'
+                    else:
+                        position_info = str(position_change)
+            else:
+                propulsion_port = str(None)
+                position_info = str(None)
 
-            head_brick = scanner_brick.head_brick.resolve_parent()
-            head_port = bricks.brick_port(head_brick)
-            head_brick_controller = bricks_controllers.brick_controller(head_brick, resolve_parent=False)
+            head_brick = scanner_brick.head_brick
+            if head_brick is not None:
+                head_brick = head_brick.resolve_parent()
+                head_port = bricks.brick_port(head_brick)
+                head_brick_controller = bricks_controllers.brick_controller(head_brick, resolve_parent=False)
 
-            def try_value(n):
-                try:
-                    return head_brick_controller.value(n)
-                except:
-                    return None
+                def try_value(n):
+                    try:
+                        return head_brick_controller.value(n)
+                    except:
+                        return None
 
-            sensor_values = tuple((try_value(i) for i in range(8)))
+                sensor_values = str(tuple((try_value(i) for i in range(8))))
+            else:
+                head_port = str(None)
+                sensor_values = str(None)
 
             texts.append('  Propulsion(' + propulsion_port + ': ' + position_info + '),' +
-                         ' Head(' + head_port + ': ' + str(sensor_values) + ')')
+                         ' Head(' + head_port + ': ' + sensor_values + ')')
 
         index = itertools.count()
         tag = self.TAG_BRICKS_INFO

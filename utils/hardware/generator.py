@@ -74,9 +74,17 @@ class HWControllerGenerator:
         if scanner_brick in self._scanners:
             return self._scanners[scanner_brick]
 
-        propulsion = ScannerPropulsion(self.hw_controller_for(scanner_brick.propulsion_brick),
-                                       scanner_brick.propulsion_info)
-        head = scanner_brick.scanner_head_mode_creator(self.hw_controller_for(scanner_brick.head_brick))
+        if scanner_brick.propulsion_brick is None or scanner_brick.propulsion_info is None:
+            propulsion = None
+        else:
+            propulsion = ScannerPropulsion(self.hw_controller_for(scanner_brick.propulsion_brick),
+                                           scanner_brick.propulsion_info)
+
+        if scanner_brick.scanner_head_mode_creator is None or scanner_brick.head_brick is None:
+            head = None
+        else:
+            head = scanner_brick.scanner_head_mode_creator(self.hw_controller_for(scanner_brick.head_brick))
+
         scanner = Scanner(propulsion, head)
         self._scanners[scanner_brick] = scanner
         return scanner

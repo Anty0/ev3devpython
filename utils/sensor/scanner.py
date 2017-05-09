@@ -27,11 +27,11 @@ class Scanner:
 
     @property
     def head_connected(self):
-        return self._head.connected
+        return self._head is not None and self._head.connected
 
     @property
     def motor_connected(self):
-        return self._propulsion.connected
+        return self._propulsion is not None and self._propulsion.connected
 
     @property
     def is_running(self):
