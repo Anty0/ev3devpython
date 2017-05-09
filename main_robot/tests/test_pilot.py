@@ -1,7 +1,7 @@
 import time
 
-from hardware.generator import HW_GENERATOR
-from hardware.gui import show as show_gui
+from main_robot.hardware.generator import HW_GENERATOR
+from main_robot.hardware.gui import show as show_gui
 
 show_gui()
 

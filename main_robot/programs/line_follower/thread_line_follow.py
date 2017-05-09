@@ -3,7 +3,7 @@ import time
 
 from ev3dev.auto import Button
 
-from hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT_SENSOR, BRICK_SCANNER_REFLECT_PROPULSION
+from main_robot.hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT_SENSOR, BRICK_SCANNER_REFLECT_PROPULSION
 from utils.control.odometry import PositionsCollector, from_wheels as odometry_from_wheels
 from utils.control.pilot import Pilot
 from utils.debug_mode import DEBUG_MODE

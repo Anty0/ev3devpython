@@ -7,10 +7,10 @@ from .config import CONFIG_VALUES
 
 class LineFollowerSharedData:
     def __init__(self, config: dict = None):
-        from hardware.hw_config import Robot
-        from hardware.generator import HW_GENERATOR
-        from hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT
-        from hardware.brick_scanner_distance import BRICK_SCANNER_DISTANCE
+        from main_robot.hardware.hw_config import Robot
+        from main_robot.hardware.generator import HW_GENERATOR
+        from main_robot.hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT
+        from main_robot.hardware.brick_scanner_distance import BRICK_SCANNER_DISTANCE
 
         self.robot_size = Robot.size
         self.pilot = HW_GENERATOR.pilot()

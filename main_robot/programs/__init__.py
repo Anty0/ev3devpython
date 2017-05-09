@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from programs.line_follower.program import LineFollowProgram
+from main_robot.programs.line_follower.program import LineFollowProgram
 
 global_args = ['--simulate', '--gui', ['--hw-normal', '--hw-fast'], '--debug']
 PROGRAMS = OrderedDict()

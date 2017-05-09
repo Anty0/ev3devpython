@@ -1,6 +1,6 @@
 import time
 
-from hardware.generator import HW_GENERATOR
+from main_robot.hardware.generator import HW_GENERATOR
 from utils.control.odometry import PositionsCollector, from_wheels
 from utils.graph import graph_to_string, GraphPoint
 from utils.threading.cycle_thread import CycleThread

@@ -1,6 +1,6 @@
 from threading import Thread, Event
 
-from hardware import hw_config as hwc
+from main_robot.hardware import hw_config as hwc
 from utils.log import get_logger
 
 log = get_logger(__name__)
@@ -14,7 +14,7 @@ def show(force=False):
             def start_gui():
                 try:
                     log.info('Creating SimulationGUI...')
-                    from hardware.generator import HW_GENERATOR
+                    from main_robot.hardware.generator import HW_GENERATOR
                     from utils.hardware.simulation.gui import WorldGui
                     word_gui = WorldGui(HW_GENERATOR)
 

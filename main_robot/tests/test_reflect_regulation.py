@@ -1,7 +1,7 @@
 import time
 
-from hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT
-from hardware.generator import HW_GENERATOR
+from main_robot.hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT
+from main_robot.hardware.generator import HW_GENERATOR
 from utils.calc.regulator import RangeRegulator
 from utils.utils import wait_to_cycle_time, crop_r
 

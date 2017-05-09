@@ -1,4 +1,4 @@
-from hardware import hw_config as hwc
+from main_robot.hardware import hw_config as hwc
 from utils.hardware.brick.main_brick import MainEV3Brick
 from utils.hardware.brick.position import AbsoluteBrickPosition
 

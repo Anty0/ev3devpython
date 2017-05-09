@@ -1,7 +1,7 @@
 import time
 
-from hardware.brick_scanner_distance import BRICK_SCANNER_DISTANCE_SENSOR
-from programs.line_follower.config import THREAD_LINE_FOLLOW_NAME
+from main_robot.hardware.brick_scanner_distance import BRICK_SCANNER_DISTANCE_SENSOR
+from main_robot.programs.line_follower.config import THREAD_LINE_FOLLOW_NAME
 from utils.calc.regulator import RangeRegulator
 from utils.calc.size import Size
 from utils.control.pilot import Pilot
