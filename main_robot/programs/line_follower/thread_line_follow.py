@@ -303,10 +303,12 @@ def run_loop(shared: ShareAccessInterface):
             pos_line_side = config['LINE_SIDE']
             pos_line_center_distance = line_info['reflect_to_position_list'][val_reflect]
             pos_line_target_distance = pos_line_center_distance - target_position
-            if pos_line_target_distance * pos_line_side < 0:
-                pos_line_target_distance *= pos_line_target_distance + 2
-            else:
-                pos_line_target_distance *= pos_line_target_distance + 1
+            if pos_line_target_distance < 0:
+                pos_line_target_distance *= \
+                    pos_line_target_distance * 3 * (abs(pos_line_target_distance) / pos_line_target_distance) + 2.5
+            elif pos_line_target_distance > 0:
+                pos_line_target_distance *= \
+                    pos_line_target_distance * 1.2 * (abs(pos_line_target_distance) / pos_line_target_distance) + 1
 
             pos_line_target_distance_sin = pos_line_target_distance / pos_propulsion_to_sensor_distance
             if pos_line_target_distance_sin > 1:

@@ -6,7 +6,7 @@ CONFIG_VALUES = OrderedDict()
 
 CONFIG_VALUES['TARGET_POWER'] = {
     'category': 'Power', 'display_name': 'Target power',
-    'type': 'int', 'default_value': 75
+    'type': 'int', 'default_value': 50
 }
 
 CONFIG_VALUES['TARGET_POSITION'] = {
@@ -22,7 +22,7 @@ CONFIG_VALUES['LINE_SIDE'] = {
 }
 CONFIG_VALUES['OBSTACLE_AVOID'] = {
     'category': 'Obstacle', 'display_name': 'Obstacle avoid',
-    'type': 'bool', 'default_value': True
+    'type': 'bool', 'default_value': False
 }
 
 CONFIG_VALUES['OBSTACLE_AVOID_SIDE'] = {

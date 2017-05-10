@@ -353,7 +353,7 @@ class Pilot:
                             + 'it requires wheel speed ' + str(max_found_speed) + ', '
                             + 'but wheel max wheel speed is ' + str(max_speed) + '. '
                             + 'Drive will be slower.')
-            change = self._max_speed_unit / max_found_speed
+            change = max_speed / max_found_speed
             for i in range(len(speeds)):
                 speeds[i] *= change
             max_found_speed *= change
