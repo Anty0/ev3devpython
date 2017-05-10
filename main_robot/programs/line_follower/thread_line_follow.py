@@ -1,8 +1,6 @@
 import math
 import time
 
-from ev3dev.auto import Button
-
 from main_robot.hardware.brick_scanner_reflect import BRICK_SCANNER_REFLECT_SENSOR, BRICK_SCANNER_REFLECT_PROPULSION
 from utils.control.odometry import PositionsCollector, from_wheels as odometry_from_wheels
 from utils.control.pilot import Pilot
@@ -11,6 +9,7 @@ from utils.graph import graph_to_string, GraphPoint
 from utils.log import get_logger
 from utils.sensor.scanner import Scanner
 from utils.threading.co_working_threads import ShareAccessInterface
+from utils.utils import crop_r
 
 log = get_logger(__name__)
 
@@ -250,11 +249,16 @@ def run_loop(shared: ShareAccessInterface):
 
         log.info('Fixing robot position...')
         pos_center_to_sensor_distance = BRICK_SCANNER_REFLECT_SENSOR.position.get(None).point.distance()
-        angle_fix = math.degrees(math.asin(
-            (line_info['position_offset'] - target_position) / pos_center_to_sensor_distance
-        ))
+        position_offset_sin = line_info['position_offset'] / pos_center_to_sensor_distance
+        if position_offset_sin > 1:
+            position_offset_sin = 1
+        elif position_offset_sin < -1:
+            position_offset_sin = -1
+        angle_fix = math.degrees(math.asin(position_offset_sin))
+
         if angle_fix != 0:
-            pilot.run_percent_drive_to_angle_deg(abs(angle_fix), 200 + (angle_fix / abs(angle_fix)), speed_mul=0.05)
+            pilot.run_percent_drive_to_angle_deg(abs(angle_fix), 200 * -(angle_fix / abs(angle_fix)), speed_mul=0.05)
+            pilot.wait_to_stop()
         return True
 
     if not perform_line_scan():
@@ -276,12 +280,12 @@ def run_loop(shared: ShareAccessInterface):
 
     pos_sensor_to_line_angle_rad = math.radians(-90)
     try:
-        if not DEBUG_MODE:
-            log.info('Line follower is ready')
-            log.info('Waiting on enter press...')
-            while not Button.enter:
-                time.sleep(0)
-            time.sleep(0.2)
+        # if not DEBUG_MODE:
+        #     log.info('Line follower is ready')
+        #     log.info('Waiting on enter press...')
+        #     while Button.enter:
+        #         time.sleep(0)
+        #     time.sleep(0.2)
 
         log.info('Line following started...')
         pilot.run_direct()
@@ -299,6 +303,34 @@ def run_loop(shared: ShareAccessInterface):
             pos_line_side = config['LINE_SIDE']
             pos_line_center_distance = line_info['reflect_to_position_list'][val_reflect]
             pos_line_target_distance = pos_line_center_distance - target_position
+            if pos_line_target_distance * pos_line_side < 0:
+                pos_line_target_distance *= pos_line_target_distance + 2
+            else:
+                pos_line_target_distance *= pos_line_target_distance + 1
+
+            pos_line_target_distance_sin = pos_line_target_distance / pos_propulsion_to_sensor_distance
+            if pos_line_target_distance_sin > 1:
+                pos_line_target_distance_sin = 1
+            elif pos_line_target_distance_sin < -1:
+                pos_line_target_distance_sin = -1
+            angle_to_line = math.degrees(
+                math.asin(pos_line_target_distance_sin) * pos_line_side
+            )
+            scanner_reflect.rotate_to_abs_pos(crop_r(pos_scanner_angle_deg + angle_to_line, max_r=100))
+
+            ch_x = math.sin(pos_scanner_angle_rad) * pos_propulsion_to_sensor_distance
+            ch_y = pos_center_to_propulsion_distance + (
+                math.cos(pos_scanner_angle_rad) * pos_propulsion_to_sensor_distance
+            )
+            course_r = (ch_x ** 2 + ch_y ** 2) / (2 * ch_x) if ch_x != 0 else None
+            # None course_r causes strait a head drive
+
+            if shared.data.pause:
+                pilot.update_duty_cycle_unit(course_r, target_duty_cycle=0, max_duty_cycle=config['TARGET_POWER'])
+                # pilot.update_duty_cycle(course, target_duty_cycle=0, mul_duty_cycle=config['TARGET_POWER'] / 100)
+            else:
+                pilot.update_duty_cycle_unit(course_r, max_duty_cycle=config['TARGET_POWER'])
+                # pilot.update_duty_cycle(course, mul_duty_cycle=config['TARGET_POWER'] / 100)
 
             if DEBUG_MODE:
                 pos_robot = odometry.position
@@ -318,25 +350,6 @@ def run_loop(shared: ShareAccessInterface):
 
                 line_positions.append([pos_line_target_x, pos_line_target_y])
 
-            angle_to_line = math.degrees(
-                math.asin(pos_line_target_distance / pos_propulsion_to_sensor_distance) * pos_line_side
-            )
-            scanner_reflect.rotate_to_rel_pos(angle_to_line)
-
-            ch_x = math.sin(pos_scanner_angle_rad) * pos_propulsion_to_sensor_distance
-            ch_y = pos_center_to_propulsion_distance + (
-                math.cos(pos_scanner_angle_rad) * pos_propulsion_to_sensor_distance
-            )
-            course_r = (ch_x ** 2 + ch_y ** 2) / (2 * ch_x) if ch_x != 0 else None
-            # None course_r causes strait a head drive
-
-            if shared.data.pause:
-                pilot.update_duty_cycle_unit(course_r, target_duty_cycle=0, max_duty_cycle=config['TARGET_POWER'])
-                # pilot.update_duty_cycle(course, target_duty_cycle=0, mul_duty_cycle=config['TARGET_POWER'] / 100)
-            else:
-                pilot.update_duty_cycle_unit(course_r, max_duty_cycle=config['TARGET_POWER'])
-                # pilot.update_duty_cycle(course, mul_duty_cycle=config['TARGET_POWER'] / 100)
-
             if shared.data.perform_line_scan:
                 pilot.stop()
                 time.sleep(5)
@@ -350,6 +363,7 @@ def run_loop(shared: ShareAccessInterface):
                 pilot.run_direct()
     finally:
         pilot.stop()
+        scanner_reflect.reset()
         if DEBUG_MODE:
             print(graph_to_string('Robot positions', [
                 GraphPoint(point[0], point[1]) for point in robot_positions_collector.positions

@@ -423,7 +423,7 @@ class Pilot:
         self._raw_run_tacho_ready(time_len, angle_deg, distance_unit, speeds_tacho, max_duty_cycle, async)
 
     def _raw_run_tacho_ready(self, time_len, angle_deg, distance_unit, speeds_tacho, max_duty_cycle, async):
-        # async = True  # TODO: test
+        async = True  # TODO: test
         if async:
             self._stop_coordinator()
             if time_len is not None:

@@ -50,12 +50,12 @@ def collision_avoid(shared: ShareAccessInterface, config: dict, pilot: Pilot, sc
         power = power_regulator.regulate(distance_val) * -1
         pilot.update_duty_cycle(0, crop_m(power, max_out=0))
 
-        if distance_val > power_regulator.target:
+        if distance_val > power_regulator.target():
             pilot.stop()
 
             last_time = time.time()
             distance_val = scanner_distance.value_scan(0, percent=True)
-            while distance_val > power_regulator.target:
+            while distance_val > power_regulator.target():
                 if not shared.should_run():
                     return
 
@@ -67,20 +67,21 @@ def collision_avoid(shared: ShareAccessInterface, config: dict, pilot: Pilot, sc
                         for i in [-1, 1]:
                             side_distance_val = scanner_distance.value_scan(40 * i, percent=True)
 
-                            if side_distance_val < power_regulator.target:
+                            if side_distance_val < power_regulator.target():
                                 scanner_distance.rotate_to_abs_pos(0)
                                 problem = True
 
                     if problem:
                         continue
 
-                    scanner_distance.rotate_to_abs_pos(0)
+                    if scanner_distance.motor_connected:
+                        scanner_distance.rotate_to_abs_pos(0)
 
                     target_speed = config['TARGET_POWER'] / 100 * pilot.get_max_speed_unit()
                     pilot.restore_positions(start_positions, speed_unit=target_speed)
 
                     distance_val = scanner_distance.value_scan(0, percent=True)
-                    while distance_val > power_regulator.target:
+                    while distance_val > power_regulator.target():
                         if not shared.should_run():
                             return
 
@@ -99,7 +100,8 @@ def collision_avoid(shared: ShareAccessInterface, config: dict, pilot: Pilot, sc
         last_time = wait_to_cycle_time(__name__, last_time, cycle_time)
 
     pilot.stop()
-    scanner_distance.rotate_to_abs_pos(0)
+    if scanner_distance.motor_connected:
+        scanner_distance.rotate_to_abs_pos(0)
 
 
 def obstacle_avoid(shared: ShareAccessInterface, config: dict, robot_size: Size, pilot: Pilot,
@@ -148,7 +150,8 @@ def obstacle_avoid(shared: ShareAccessInterface, config: dict, robot_size: Size,
         pilot.wait_to_stop()
 
     pilot.run_percent_drive_forever(0, speed_unit=target_speed)
-    scanner_distance.rotate_to_abs_pos(0)
+    if scanner_distance.motor_connected:
+        scanner_distance.rotate_to_abs_pos(0)
 
     def get_reflect_percent():
         return (scanner_reflect.value(percent=False) - min_reflect) / (max_reflect - min_reflect) * 100
@@ -187,8 +190,9 @@ def run_loop(shared: ShareAccessInterface):
     while shared.should_run():
         runtime_config.update_extracted_config(config)
 
-        if (config['OBSTACLE_AVOID'] or config['COLLISION_AVOID']) and not scanner_distance.is_running:
-            if scanner_distance.angle_deg() != 0:
+        if (config['OBSTACLE_AVOID'] or config['COLLISION_AVOID']) \
+                and (not scanner_distance.motor_connected or not scanner_distance.is_running):
+            if scanner_distance.motor_connected and scanner_distance.angle_deg() != 0:
                 scanner_distance.rotate_to_abs_pos(0)
                 scanner_distance.wait_to_stop()
                 continue

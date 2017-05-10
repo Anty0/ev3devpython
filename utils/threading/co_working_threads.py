@@ -41,7 +41,7 @@ class ShareAccessInterface:
         if repeat_while_paused is None:
             try:
                 event_paused.set()
-                return event_request_pause.wait(timeout=timeout)
+                return event_request_pause.wait_clear(timeout=timeout)
             finally:
                 event_paused.clear()
 
@@ -61,7 +61,7 @@ class ShareAccessInterface:
 class Events:
     def __init__(self):
         self.event_stopped = Event()
-        self.event_request_pause = Event()
+        self.event_request_pause = DualEvent()
         self.event_paused = DualEvent()
         self.event_stopped_or_paused = Event()
 

@@ -23,10 +23,10 @@ class DualEvent:
             self._inverted_event.set()
 
     def wait(self, timeout=None):
-        self.wait_set(timeout=timeout)
+        return self.wait_set(timeout=timeout)
 
     def wait_set(self, timeout=None):
-        self._event.wait(timeout)
+        return self._event.wait(timeout)
 
     def wait_clear(self, timeout=None):
-        self._inverted_event.wait(timeout)
+        return self._inverted_event.wait(timeout)
